@@ -368,9 +368,11 @@ proc Create_hard_disk {name body} {
 set LocalModules [file normalize [file join [file dirname [info script]] modules]]
 
 proc FindViaUsing {middirs name suffix} {
-    foreach s $suffix {
-        if [file exists $::LocalModules/$name$s] {
-            return $::LocalModules/$name$s
+    foreach dir [list $::LocalModules $::LocalBuild] {
+        foreach s $suffix {
+            if [file exists $dir/$name$s] {
+                return $dir/$name$s
+            }
         }
     }
     foreach d $::Using {
@@ -386,6 +388,8 @@ proc FindViaUsing {middirs name suffix} {
 }
 
 ###########################################################################
+
+source [file join [file dirname [info script]] unix.tcl]
 
 Platform tfr911 {
   Level level2 {
@@ -404,7 +408,7 @@ Platform tfr911 {
         krn
     }
     Create_os9boot_style_secondary_boot "tfr911-level2.o9b" {
-        init krnp2 ioman clock_60=clock,PwrLnFrq=60 clock2_tfr911
+        init krnp2 krnp3_perr ioman clock_60=clock,PwrLnFrq=60 clock2_tfr911
         scf sc6850
         term=term_sc6850,HwBASE=0xFF14,Pauses=0
         rbf  emudsk
@@ -418,7 +422,7 @@ Platform tfr911 {
         -sectors 99999
         -track35 "tfr911-level2.t35"
         -os9boot "tfr911-level2.o9b"
-        -cmds {@DEFAULT_CMDS_LEVEL2 @BASIC09_CMDS_LEVEL1}
+        -cmds {@DEFAULT_CMDS_LEVEL2 @BASIC09_CMDS_LEVEL1 @UNIX_CMDS}
     }
   }
 }

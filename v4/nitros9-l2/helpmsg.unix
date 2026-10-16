@@ -1,0 +1,65 @@
+@UNIX
+Unix-style commands on the TFR/911H (try "man <name>"):
+  ls ll cat cp mv rm mkdir rmdir pwd cd ps df less man
+  grep clear uname exit
+Most are aliases that run the OS-9 command shown by "man".
+OS-9 paths use / like Unix; /DD is the disk, . and .. work.
+Differences: pipes are "!" not "|"; ">>" redirects errors (there is no
+append); "<>" and ">>>" redirect several paths; "&" runs in background.
+@LS
+Syntax: ls [-l] [<path>]   (runs: dir, with -l as -e)
+Usage : List a directory.  "ls -l" or "ll" gives the long form.
+@LL
+Syntax: ll [<path>]        (runs: dir -e)
+Usage : List a directory, long form.
+@CAT
+Syntax: cat <path>         (runs: list)
+Usage : Print a text file.
+@CP
+Syntax: cp <from> <to>     (runs: copy)
+Usage : Copy a file.
+@MV
+Syntax: mv <path> <newname>   (runs: rename)
+Usage : Rename a file or directory.  It cannot move it to another directory.
+@RM
+Syntax: rm <path> ...      (runs: del)
+Usage : Delete files.
+@MKDIR
+Syntax: mkdir <path>       (runs: makdir)
+Usage : Make a directory.
+@RMDIR
+Syntax: rmdir <path>       (runs: deldir)
+Usage : Delete a directory and what is in it (it asks first).
+@PWD
+Syntax: pwd
+Usage : Print the data (working) directory.  pxd prints the execution directory.
+@CD
+Syntax: cd <path>          (Shell built-in, same as chd)
+Usage : Change the data (working) directory.  chx changes the execution
+        directory, where commands are found.
+@PS
+Syntax: ps [-e]            (runs: procs)
+Usage : List processes.  -e lists everyone's.
+@DF
+Syntax: df [/dd]           (runs: free)
+Usage : Show free space on a disk.  mfree shows free memory.
+@LESS
+Syntax: less <path>        (runs: more)
+Usage : Show a file a screen at a time.
+@MAN
+Syntax: man [<command>]    (runs: help)
+Usage : Show help for a command.  "man unix" lists the Unix-style commands.
+@GREP
+Syntax: grep [-i] [-n] <pattern> [<path>]
+Usage : Print lines containing the pattern (a plain string, not a regexp).
+        -i ignores case, -n shows line numbers.  Reads standard input
+        if no path is given, so "dir ! grep foo" works.
+@CLEAR
+Syntax: clear
+Usage : Clear the screen.
+@UNAME
+Syntax: uname
+Usage : Say what this is.
+@EXIT
+Syntax: exit               (Shell built-in)
+Usage : Leave this shell.

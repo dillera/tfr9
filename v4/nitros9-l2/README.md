@@ -41,6 +41,24 @@ OS9:mfree
             Total:   17   184k
 ```
 
+## Unix-style commands
+
+`unix.tcl` adds `cd` and `exit` to the Shell (by patching a copy of
+`shell_21.asm`), `pwd`/`pxd` (NitrOS-9's `pd`), `grep` (patched to take an
+unquoted pattern), `clear`, and aliases that run the OS-9 equivalent:
+`ls` (`ls -l`), `ll`, `cat`, `cp`, `mv`, `rm`, `mkdir`, `rmdir`, `ps`, `df`,
+`less`, `man`, `uname`.  `man unix` on the TFR/911H summarizes them.
+An alias is a tiny module that F$Chains to the real command; add more to
+`UNIX_ALIASES` in `unix.tcl`.
+
+To bring an existing disk up to date with a new build (new OS9Boot, and
+everything in CMDS and SYS; your other files are left alone), quit the
+tether, then:
+
+```
+make install DISK=level2.dsk OS9_TOOL=...   # then press RESET on the board
+```
+
 ## What the firmware emulates
 
 `../tfr911h/v4_nitros9_l2.h` makes the TFR/911H look like a small CoCo 3,
