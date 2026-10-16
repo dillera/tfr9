@@ -6,8 +6,19 @@ flash: build/tfr911h_v4.uf2
 run:
 	sh tether.sh
 
+# NitrOS-9 Level 2: build the OS, kernel ROM header and disk (needs a
+# NitrOS-9 tree, lwtools and toolshed's os9), then boot it with run-l2.
+nitros9-l2:
+	$(MAKE) -C nitros9-l2
+
+run-l2:
+	sh run-l2.sh
+
+.PHONY: nitros9-l2 run-l2
+
 clean:
 	rm -rf build tfr911h/build _log
+	rm -rf nitros9-l2/build
 	$(MAKE) -C cpu-tracker clean
 
 test-cpu-tracker:

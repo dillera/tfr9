@@ -75,11 +75,7 @@ func EmulateDiskWrite(disk_param []byte, channelToPico chan []byte) {
 	var sector []byte
 
 	switch len(disk_param) {
-	case 256 + 4:
-		var disk_param [4]byte
-		for i := 0; i < 4; i++ {
-			disk_param[i] = disk_param[i]
-		}
+	case 256 + 4: // TFR9: drive, LSN (3 bytes), sector
 		hnum = disk_param[0]
 		AssertLT(hnum, MaxDiskFiles)
 
@@ -120,9 +116,7 @@ func EmulateDiskRead(disk_param []byte, channelToPico chan []byte) {
 	var hnum byte
 	var lsn uint
 
-	for i := 0; i < len(disk_param); i++ {
-		Logf("EmulateDiskRead: disk_param[%x]: %02x", i, disk_param[i])
-	}
+	Logf("EmulateDiskRead: disk_param % x", disk_param)
 
 	switch len(disk_param) {
 	case 4: // TFR9 only

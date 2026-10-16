@@ -35,6 +35,7 @@ constexpr unsigned GROUP_SIZE = 50; // 100; // 10000;
 #include <pico/unique_id.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <cstring>
 #include <atomic>
@@ -207,7 +208,9 @@ enum cycle_kind : byte {
 // ═══════════════════════════════════════════════════════════════════
 // Globals
 // ═══════════════════════════════════════════════════════════════════
-byte ram[64 * 1024];
+// 64K for TurbOS; L2_RAM_KILOS for NitrOS-9 Level 2 (see v4_nitros9_l2.h).
+#define L2_RAM_KILOS 256
+byte ram[L2_RAM_KILOS * 1024];
 
 byte vector_ram[16];
 
@@ -389,7 +392,8 @@ void PollTermInput() {
     std::string* pkt = usb_packet_buf.Yoink([](std::string* s) {
       return s && s->length() > 0 &&
              (unsigned char)(*s)[0] != T_RPC &&
-             (unsigned char)(*s)[0] != T_PICO_RPC;
+             (unsigned char)(*s)[0] != T_PICO_RPC &&
+             (unsigned char)(*s)[0] != C_DISK_READ;  // EmuDsk replies
     });
     if (!pkt) break;
     byte cmd = (byte)(*pkt)[0];
@@ -827,6 +831,29 @@ void IN_RAM Engine__Foreground() {
     Engine::Foreground();
 }
 
+// NitrOS-9 Level 2, chosen with the Tcl command `l2` instead of `bye`.
+volatile bool boot_l2 = false;
+#include "v4_nitros9_l2.h"
+
+// T_WALLTIME from the tether: [182 t3 t2 t1 t0], local time in Unix seconds.
+// Taken off the packet queue before the Tcl REPL can eat it as a keystroke.
+constexpr byte T_WALLTIME = 182;
+void PollWallTime() {
+  std::string* pkt = usb_packet_buf.Yoink([](std::string* s) {
+    return s && s->length() >= 5 && (unsigned char)(*s)[0] == T_WALLTIME;
+  });
+  if (!pkt) return;
+  const unsigned char* p = (const unsigned char*)pkt->data();
+  l2::wall_seconds = (p[1] << 24) | (p[2] << 16) | (p[3] << 8) | p[4];
+  l2::wall_received_us = time_us_64();
+  delete pkt;
+}
+
+int l2_cmd(ClientData, Tcl_Interp*, int, char**) {
+  boot_l2 = true;
+  return TCL_BYE;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // 60Hz Timer for turbo9sim
 // ═══════════════════════════════════════════════════════════════════
@@ -834,7 +861,11 @@ struct repeating_timer Timer60HzData;
 volatile bool halt_suppress_timer = false;
 bool IN_RAM Timer60HzCallback(repeating_timer_t* rt) {
   if (!halt_suppress_timer) {
-    Engine::Turbo9sim_SetTimerFired();
+    if (boot_l2) {
+      l2::OnVsync();
+    } else {
+      Engine::Turbo9sim_SetTimerFired();
+    }
   }
   return true;
 }
@@ -870,6 +901,7 @@ static void tcl_repl_task(Coro& self) {
   rpc::g_vfs_coro = &self;  // VFS RPC yields back to scheduler
   gspoon::g_spoon_coro = &self;  // ls_cmd etc. call coro_yield(g_spoon_coro)
   cobs_printf("\nTFR911 TCL SHELL.  To exit TCL and launch 6809, type  bye \n");
+  cobs_printf("To boot NitrOS-9 Level 2 instead (needs tether -disks=...), type  l2 \n");
 
   char line[256];
   while (true) {
@@ -1035,7 +1067,8 @@ static void tcl_repl_task(Coro& self) {
   }
 
 BYE:
-  cobs_printf("[BYE — starting 6309]\n");
+  cobs_printf(boot_l2 ? "[L2: starting 6309 with NitrOS-9 Level 2]\n"
+                      : "[BYE — starting 6309]\n");
   tcl_repl_done = true;
 }
 
@@ -1219,6 +1252,7 @@ void IN_RAM tfr911_background() {
   init_lfs();
   global_tcl_interp = Tcl_CreateInterp();
   register_tcl_commands(global_tcl_interp);
+  Tcl_CreateCommand(global_tcl_interp, (char*)"l2", l2_cmd, NULL, NULL);
 
   // Create all coroutines upfront
   Coro tcl_repl_coro;
@@ -1238,6 +1272,7 @@ void IN_RAM tfr911_background() {
   while (true) {
     // HIGH PRIORITY: drain console characters first (inline, fast)
     drain_chars();
+    PollWallTime();
 
     if (!phase2) {
       // ── Phase 1: Tcl REPL ──────────────────────────────────────
@@ -1274,7 +1309,9 @@ void IN_RAM tfr911_background() {
 
         foreground_running = false;
         cobs_printf("[bye: launching core1...]\n");
-        multicore_launch_core1(Engine__Foreground);
+        multicore_launch_core1(boot_l2 ? L2__Foreground : Engine__Foreground);
+
+        l2::UpdateRtc();  // before the 6309 can read it
 
         // Drain ROM writes from fg2bg while waiting for foreground.
         // Install_OS pushes ~34K FG2BG_WRITE entries.
@@ -1336,6 +1373,15 @@ void IN_RAM tfr911_background() {
       coro_resume(&halt_test_coro);
       PumpUsbCobs();
 #endif
+
+      if (boot_l2) {
+        l2::ServiceDisk();
+        PollTermInput();
+        l2::DeliverKeystroke();
+        l2::ReportStats();
+        l2::UpdateRtc();
+        continue;
+      }
 
       // Deliver terminal input to 6309 ACIA emulator
       PollTermInput();

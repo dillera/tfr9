@@ -52,6 +52,8 @@ var tetherLogUsbSerial uint64
 
 var CENTIPEDE = flag.Bool("centipede", true, "Centipede should set this flag")
 var LEVEL = flag.Int("level", 0, "NitrOS9 level, or 0")
+var PASS_CTRL_C = flag.Bool("pass_ctrl_c", false, "send ^C (and ^\\, ^Z) to the 6309 instead of to tether; quit tether with ^] instead")
+var BOOT = flag.String("boot", "", "Tcl command to run at the TCL> prompt, e.g. l2 (ignored if the 6309 is already running)")
 var COBS_CHECKSUMS = flag.Bool("cobs_checksums", true, "Enable COBS packet checksums")
 
 var the_ram Rammer
@@ -116,6 +118,7 @@ const (
 	T_COMMAND   = 179
 	T_RPC       = 180
 	T_PICO_RPC  = 181
+	T_WALLTIME  = 182 // Payload: local time as 4-byte big-endian Unix seconds.
 )
 
 var cmdChan = make(chan string, 10)
@@ -705,6 +708,14 @@ func InkeyRoutine(inkey chan byte) {
 			continue
 		}
 		atStartOfLine = (ch == '\r' || ch == '\n')
+
+		if *PASS_CTRL_C && ch == 0x1D { // ^] quits, since ^C goes to the 6309.
+			if runtime.GOOS != "windows" {
+				RestoreSttyState()
+			}
+			fmt.Printf("\r\n[tether: quit with ^]]\r\n")
+			os.Exit(0)
+		}
 
 		sendKey(ch)
 	}
@@ -1422,6 +1433,15 @@ func RunSelect(inkey chan byte, fromUSB <-chan byte, channelToPico chan []byte, 
 	} // end for ever
 } // RunSelect
 
+// SendWallTime tells the Pico the local wall-clock time, so the 6309 can
+// have a real-time clock (the Pico has no battery-backed clock of its own).
+func SendWallTime(channelToPico chan []byte) {
+	now := time.Now()
+	_, offset := now.Zone()
+	t := uint32(now.Unix() + int64(offset))
+	WriteBytes(channelToPico, T_WALLTIME, byte(t>>24), byte(t>>16), byte(t>>8), byte(t))
+}
+
 func Run(inkey chan byte, person Personality) {
 	const SERIAL_BUFFER_SIZE = 1024
 
@@ -1455,6 +1475,19 @@ func Run(inkey chan byte, person Personality) {
 				log.Printf("QUICK-INJECT SUCCESS")
 				fmt.Printf("%s\n", string(resp.Data))
 				os.Exit(0)
+			}
+		}()
+	}
+
+	SendWallTime(channelToPico)
+
+	if *BOOT != "" {
+		go func() {
+			resp, err := PicoRpcCall(channelToPico, "inject", []byte(*BOOT), 24*time.Hour)
+			if err != nil {
+				log.Printf("-boot %q: %v", *BOOT, err)
+			} else {
+				log.Printf("-boot %q: status=%d result=%q", *BOOT, resp.Status, string(resp.Data))
 			}
 		}()
 	}
