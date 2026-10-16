@@ -386,6 +386,8 @@ inline void set_floppy_names() {}
 // ═══════════════════════════════════════════════════════════════════
 // USB packet dispatch — delivers typed chars to term_input
 // ═══════════════════════════════════════════════════════════════════
+extern volatile bool boot_l2;
+
 void PollTermInput() {
   // Take non-RPC, non-PicoRPC packets from usb_packet_buf as terminal input
   while (true) {
@@ -413,6 +415,8 @@ void PollTermInput() {
           byte c = cmd;
           if (c == 10) c = 13;
           term_input.Put(c);
+        } else if (boot_l2 && cmd >= 128 && cmd <= 133) {
+          term_input.Put(cmd);  // arrow keys; l2::DeliverKeystroke maps them
         }
         break;
     }

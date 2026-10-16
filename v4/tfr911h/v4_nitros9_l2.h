@@ -93,6 +93,10 @@ volatile uint32_t stat_cycles;
 volatile uint32_t stat_idle_cycles;   // $FFFF on the bus: SYNC/CWAI/HALT
 volatile uint32_t stat_irq_asserts;
 volatile uint32_t stat_disk_ops;
+volatile uint32_t stat_tx_bytes;  // console output written by the 6309
+// Where the 6309 is: the last first-instruction cycle (the cycle after LIC),
+// as task << 16 | physical block << 20 | logical address.  For debugging.
+volatile uint32_t last_fic;
 
 FORCE_INLINE void IN_RAM RecomputeBases() {
   for (uint slot = 0; slot < 8; slot++) {
@@ -212,6 +216,7 @@ void IN_RAM IOWrite(uint addr, byte data) {
       UpdateIrqPin();
       break;
     case ACIA_PORT + 1:  // 6850 Tx data
+      stat_tx_bytes++;
       Say(data);
       break;
     case EMUDSK_PORT + 3:
@@ -260,6 +265,7 @@ void IN_RAM Foreground() {
   foreground_running = true;
 
   uint idle = 0;
+  uint prev_late_pins = 0;
   while (true) {
     UpdateIrqPin();  // pick up the 60Hz tick and new keystrokes
     stat_cycles += GROUP_SIZE;
@@ -272,18 +278,24 @@ void IN_RAM Foreground() {
       uint addr = 0xFFFF & hw->gpio_hi_in;
       if (addr == 0xFFFF) idle++;
 
+      uint late_pins;
       if (LIKELY(early_pins & (1 << R_W))) {
         byte value = LIKELY(addr < 0xFF00) ? ram[Phys(addr)] : IORead(addr);
         pio_sm_put(pio0, 0, value);
-        (void)pio_sm_get_blocking(pio0, 0);  // late pins
+        late_pins = pio_sm_get_blocking(pio0, 0);
+        if (prev_late_pins & (1 << LIC)) {
+          last_fic = addr | (task << 16) | ((Phys(addr) >> 13) << 20);
+        }
       } else {
-        byte value = (byte)pio_sm_get_blocking(pio0, 0);  // late pins
+        late_pins = pio_sm_get_blocking(pio0, 0);
+        byte value = (byte)late_pins;
         if (LIKELY(addr < 0xFF00)) {
           ram[Phys(addr)] = value;
         } else {
           IOWrite(addr, value);
         }
       }
+      prev_late_pins = late_pins;
     }
   }
 }
@@ -297,7 +309,13 @@ void IN_RAM OnVsync() {
 void DeliverKeystroke() {
   while (!rx_full && term_input.NumBuffered() > 0) {
     byte ch = term_input.Take();
-    if (ch >= 128) continue;  // tether's arrow-key codes for the TCL editor
+    if (ch >= 128) {
+      // The tether sends arrow keys as 128..131 (Up, Down, Left, Right) for
+      // the TCL editor.  Give OS-9 what a CoCo 3 keyboard sends for them.
+      static const byte arrows[4] = {0x0C, 0x0A, 0x08, 0x09};
+      if (ch > 131) continue;  // Page Up/Down: nothing on a CoCo
+      ch = arrows[ch - 128];
+    }
     rx_char = ch;
     __dmb();
     rx_full = true;
@@ -313,12 +331,24 @@ void ReportStats() {
            d = stat_disk_ops;
   char buf[120];
   int n = snprintf(buf + 1, sizeof buf - 1,
-                   "L2 stats: %lu cycles/s, %lu idle/s, %lu irqs/s, %lu disk/s",
+                   "L2 stats: %lu cycles/s, %lu idle/s, %lu irqs/s, %lu disk/s, %lu tx",
                    (unsigned long)((uint64_t)(c - last_cycles) * 1000000 / (now - last_us)),
                    (unsigned long)((uint64_t)(i - last_idle) * 1000000 / (now - last_us)),
                    (unsigned long)((uint64_t)(q - last_irqs) * 1000000 / (now - last_us)),
-                   (unsigned long)((uint64_t)(d - last_disk) * 1000000 / (now - last_us)));
+                   (unsigned long)((uint64_t)(d - last_disk) * 1000000 / (now - last_us)),
+                   (unsigned long)stat_tx_bytes);
   buf[0] = C_LOGGING;
+  CobsEncodeAndTransmit((byte*)buf, n + 1, [](int ch) { putchar_raw(ch); });
+
+  // A few samples of where the 6309 is: task.block.address
+  n = snprintf(buf + 1, sizeof buf - 1, "L2 pc:");
+  for (int k = 0; k < 8; k++) {
+    uint32_t f = last_fic;
+    n += snprintf(buf + 1 + n, sizeof buf - 1 - n, " %lx.%02lx.%04lx",
+                  (unsigned long)((f >> 16) & 1), (unsigned long)(f >> 20),
+                  (unsigned long)(f & 0xFFFF));
+    sleep_us(1234);
+  }
   CobsEncodeAndTransmit((byte*)buf, n + 1, [](int ch) { putchar_raw(ch); });
   last_us = now;
   last_cycles = c, last_idle = i, last_irqs = q, last_disk = d;

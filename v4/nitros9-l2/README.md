@@ -59,6 +59,22 @@ tether, then:
 make install DISK=level2.dsk OS9_TOOL=...   # then press RESET on the board
 ```
 
+## Games
+
+`games/` holds C programs compiled with [CMOC](http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html)
+(`cmoc --os9`); if `cmoc` isn't installed they are left off the disk.
+
+* `tetris`: arrows or a/d/w/s, space drops, p pauses, q quits.  It draws
+  with ANSI escapes on the terminal the tether runs in, and opens its own
+  path to `/term` for raw keys, so the Shell's terminal settings are untouched.
+
+Arrow keys reach OS-9 as a CoCo 3 sends them: left `$08`, right `$09`,
+up `$0C`, down `$0A` (so left arrow is also backspace at the Shell).
+
+Two CMOC-on-OS-9 lessons: give programs `--add-os9-stack-space=2048` (the
+default stack is too small even for printf), and don't write
+`flag ? byteval : -1` (CMOC gives it the byte's type, so -1 becomes 255).
+
 ## What the firmware emulates
 
 `../tfr911h/v4_nitros9_l2.h` makes the TFR/911H look like a small CoCo 3,

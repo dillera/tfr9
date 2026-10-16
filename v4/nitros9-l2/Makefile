@@ -16,6 +16,10 @@ B09DSK = $(NITROS9_DIR)/3rdparty/packages/basic09/Basic09_v010100.dsk
 LWASM ?= lwasm
 LWLINK ?= lwlink
 LWAR ?= lwar
+# Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html).
+CMOC ?= cmoc
+GAMES = $(if $(shell command -v $(CMOC)),build/tetris)
+
 OBJ_FLAGS = --6309 --format=obj --no-warn=ifp1 \
   --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export
 
@@ -28,12 +32,17 @@ $B/tfr911-level2.dsk: $B/Makefile FORCE
 	rm -f $B/tfr911-level2.dsk
 	$(MAKE) -C $B
 
-build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg
+build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $(GAMES)
 	cp -f $< $@
 	$(OS9_TOOL) copy -l -r startup $@,startup
 	$(OS9_TOOL) attr -q -r -w -pr $@,startup
 	$(OS9_TOOL) copy -r build/grep $@,CMDS/grep
 	$(OS9_TOOL) attr -q -r -w -e -pr -pe $@,CMDS/grep
+	for g in $(GAMES); do \
+	  $(OS9_TOOL) copy -r $$g $@,CMDS/$$(basename $$g) && \
+	  $(OS9_TOOL) attr -q -r -w -e -pr -pe $@,CMDS/$$(basename $$g) || exit 1; \
+	done
+	@test -n "$(GAMES)" || echo "NOTE: $(CMOC) not found, so no games on the disk."
 	$(OS9_TOOL) makdir $@,SYS
 	$(OS9_TOOL) copy -l -r $(NITROS9_DIR)/level1/sys/errmsg $@,SYS/errmsg
 	$(OS9_TOOL) copy -l -r build/helpmsg $@,SYS/helpmsg
@@ -55,6 +64,10 @@ build/grep: $B/Makefile  # rmake-l2.tcl writes build/local/grep.as
 	$(LWASM) $(OBJ_FLAGS) -I$(NITROS9_DIR)/defs -o build/sys.o $(NITROS9_DIR)/lib/sys6809l2.as
 	$(LWASM) $(OBJ_FLAGS) -I$(NITROS9_DIR)/defs -o build/grep.o build/local/grep.as
 	cd build && $(LWLINK) --format=os9 -o grep grep.o sys.o alib.a  # module name = output name
+
+build/tetris: games/tetris.c
+	mkdir -p build
+	cd build && $(CMOC) --os9 --add-os9-stack-space=2048 -o tetris ../games/tetris.c  # module name = output name
 
 # NitrOS-9's help text, plus the Unix-style commands.
 build/helpmsg: helpmsg.unix
