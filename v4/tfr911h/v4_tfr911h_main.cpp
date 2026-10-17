@@ -21,6 +21,7 @@
 
 constexpr unsigned GROUP_SIZE = 50; // 100; // 10000;
 
+#include <hardware/adc.h>
 #include <hardware/clocks.h>
 #include <hardware/pio.h>
 #include <hardware/structs/qmi.h>
@@ -1389,6 +1390,7 @@ void IN_RAM tfr911_background() {
         l2::DeliverKeystroke();
         l2::ReportStats();
         l2::UpdateRtc();
+        l2::ServiceInfo();
         continue;
       }
 

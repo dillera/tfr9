@@ -1,7 +1,7 @@
 @UNIX
 Unix-style commands on the TFR/911H (try "man <name>"):
   ls ll cat cp mv rm mkdir rmdir pwd cd ps df less man
-  grep clear uname exit vi vim   and: tetris zm beep click
+  grep clear uname exit vi vim info   and: tetris zm beep click
 Most are aliases that run the OS-9 command shown by "man".
 OS-9 paths use / like Unix; /DD is the disk, . and .. work.
 Differences: pipes are "!" not "|"; ">>" redirects errors (there is no
@@ -81,6 +81,12 @@ Usage : A small vi.  ESC returns to normal mode.  Normal mode:
 @VIM
 Syntax: vim [<file>]         (runs: vi)
 Usage : The same as vi.
+@INFO
+Syntax: info [-p]
+Usage : Show the system: OS version and settings, memory, processes,
+        devices, disks (size and free space), interrupt handlers, the
+        modules in memory, and the TFR/911H hardware's own report.
+        -p gives plain text, with no bold headings.
 @ZM
 Syntax: zm [-w <cols>] [-h <rows>] [-m <kbytes>] [-d] <story>
 Usage : Play an Infocom (or Inform) version 3 story file, such as

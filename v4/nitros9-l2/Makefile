@@ -18,7 +18,7 @@ LWLINK ?= lwlink
 LWAR ?= lwar
 # Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html).
 CMOC ?= cmoc
-GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi)
+GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/info)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -79,6 +79,10 @@ build/zm: games/zm.c
 build/vi: games/vi.c
 	mkdir -p build
 	cd build && $(CMOC) --os9 --function-stack=0 --add-os9-stack-space=1024 -o vi ../games/vi.c
+
+build/info: games/info.c
+	mkdir -p build
+	cd build && $(CMOC) --os9 --function-stack=0 --add-os9-stack-space=1024 -o info ../games/info.c
 
 # vi for this computer, for testing
 build/vi-host: games/vi.c

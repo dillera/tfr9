@@ -72,6 +72,16 @@ Arrow keys reach OS-9 as a CoCo 3 sends them: left `$08`, right `$09`,
 up `$0C`, down `$0A` (so left arrow is also backspace at the Shell),
 except while a program has set bit 7 of `$FF42` (see Sound).
 
+* `info`: everything the system knows about itself: the OS version and
+  settings (from the Init module), memory (the block map), processes,
+  device descriptors and which are attached, each disk's size and free
+  space (from LSN 0 and its bitmap), the IRQ polling table, the modules in
+  memory, and the TFR/911H firmware's own report (Pico clock and ID, the
+  6309's measured speed and load, interrupt rate, disk, console and sound
+  counters, uptime).  It reads the kernel's tables with `F$GPrDsc`,
+  `F$CpyMem` and `F$GModDr`, as `procs`, `devs` and `mdir` do.  `info -p`
+  leaves out the bold headings, for redirecting to a file.
+
 * `vi` (or `vim`): a small vi, with most of the normal-mode commands
   people use without thinking (motions, `d`/`c`/`y` with any motion,
   counts, `p`, `u` with any number of levels, `.`, `/` and `?`),
@@ -153,6 +163,7 @@ the same way v3 ran Level 2 on the TFR/905H:
 | RTC | `$FFC0`-`$FFC7` | the PC's local time, sent by the tether (`clock2_tfr911`) |
 | SN76489 | `$FF41` | write-only sound chip (see Sound) |
 | Sound control | `$FF42` | bit 0 keyclicks, bit 1 bell, bit 7 raw arrow keys |
+| Info port | `$FF43`-`$FF44` | write `$A5` to `$FF43`; when it reads 1, read the firmware's report from `$FF44` (`label TAB value LF` lines, then 0) |
 
 Other `$FFxx` locations read back what was last written.
 The 6309 runs in 6809 mode.

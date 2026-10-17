@@ -95,6 +95,15 @@ volatile uint32_t stat_idle_cycles;   // $FFFF on the bus: SYNC/CWAI/HALT
 volatile uint32_t stat_irq_asserts;
 volatile uint32_t stat_disk_ops;
 volatile uint32_t stat_tx_bytes;  // console output written by the 6309
+volatile uint32_t stat_rx_keys;   // keys given to the 6309
+
+// The info port, for OS-9's `info` command: writing $A5 to $FF43 asks
+// core 0 for a report; $FF43 reads 1 once it is ready, and each read of
+// $FF44 gives its next character, then 0 at the end.  Lines are
+// "label<TAB>value<LF>".
+char info_text[1024];
+volatile uint info_len, info_pos;
+volatile bool info_request, info_ready;
 // Where the 6309 is: the last first-instruction cycle (the cycle after LIC),
 // as task << 16 | physical block << 20 | logical address.  For debugging.
 volatile uint32_t last_fic;
@@ -179,6 +188,11 @@ byte IN_RAM IORead(uint addr) {
       return disk_status;
     case 0x42:
       return audio::control;
+    case 0x43:
+      return info_ready ? 1 : 0;
+    case 0x44:
+      if (!info_ready || info_pos >= info_len) return 0;
+      return (byte)info_text[info_pos++];
     case RTC_PORT + 0: case RTC_PORT + 1: case RTC_PORT + 2: case RTC_PORT + 3:
     case RTC_PORT + 4: case RTC_PORT + 5: case RTC_PORT + 6: case RTC_PORT + 7:
       return rtc[a & 7];
@@ -229,14 +243,23 @@ void IN_RAM IOWrite(uint addr, byte data) {
     case 0x42:  // sound control
       audio::control = data;
       break;
+    case 0x43:  // info port
+      if (data == 0xA5) {
+        info_ready = false;
+        info_request = true;
+      }
+      break;
     case EMUDSK_PORT + 3:
       DoDiskCommand(data);
       break;
   }
 }
 
+uint64_t boot_us;            // when NitrOS-9 was started
+
 // Runs on core 1 before the bus loop starts.
 void InstallOS() {
+  boot_us = time_us_64();
   memset(ram, 0, RAM_SIZE);
   memset(io, 0, sizeof io);
   vsync_pending = false;
@@ -335,6 +358,7 @@ void DeliverKeystroke() {
     rx_char = ch;
     __dmb();
     rx_full = true;
+    stat_rx_keys++;
     audio::Click();
   }
 }
@@ -450,6 +474,101 @@ void ServiceDisk() {
     default:
       break;
   }
+}
+
+// Rates over the last second, for the info report.
+uint32_t rate_cycles, rate_idle, rate_irqs, rate_disk;
+
+void UpdateRates() {
+  static uint64_t last_us;
+  static uint32_t c0, i0, q0, d0;
+  uint64_t now = time_us_64();
+  if (now - last_us < 1'000'000) return;
+  uint32_t c = stat_cycles, i = stat_idle_cycles, q = stat_irq_asserts, d = stat_disk_ops;
+  if (last_us) {
+    uint64_t dt = now - last_us;
+    rate_cycles = (uint32_t)((uint64_t)(c - c0) * 1000000 / dt);
+    rate_idle = (uint32_t)((uint64_t)(i - i0) * 1000000 / dt);
+    rate_irqs = (uint32_t)((uint64_t)(q - q0) * 1000000 / dt);
+    rate_disk = (uint32_t)((uint64_t)(d - d0) * 1000000 / dt);
+  }
+  last_us = now;
+  c0 = c, i0 = i, q0 = q, d0 = d;
+}
+
+// "3d 4h 5m 6s"
+int FormatTime(char* p, int room, uint64_t us) {
+  uint32_t t = (uint32_t)(us / 1000000);
+  uint32_t d = t / 86400, h = t / 3600 % 24, m = t / 60 % 60, sec = t % 60;
+  if (d) return snprintf(p, room, "%lud %luh %lum", (unsigned long)d, (unsigned long)h, (unsigned long)m);
+  if (h) return snprintf(p, room, "%luh %lum %lus", (unsigned long)h, (unsigned long)m, (unsigned long)sec);
+  return snprintf(p, room, "%lum %lus", (unsigned long)m, (unsigned long)sec);
+}
+
+float ChipTemperature() {
+  static bool ready;
+  if (!ready) {
+    adc_init();
+    adc_set_temp_sensor_enabled(true);
+    adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
+    sleep_us(100);
+    for (int k = 0; k < 8; k++) adc_read();  // let it settle
+    ready = true;
+  }
+  adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
+  uint32_t sum = 0;
+  for (int k = 0; k < 16; k++) sum += adc_read();
+  float v = (sum / 16) * 3.3f / 4096;
+  return 27 - (v - 0.706f) / 0.001721f;
+}
+
+// Core 0: build the report the info port asked for.
+void ServiceInfo() {
+  UpdateRates();
+  if (!info_request) return;
+  char* p = info_text;
+  int room = sizeof info_text, n;
+#define LINE(...)                          \
+  do {                                     \
+    n = snprintf(p, room, __VA_ARGS__);    \
+    if (n > 0 && n < room) p += n, room -= n; \
+  } while (0)
+  char id[2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1];
+  pico_get_unique_board_id_string(id, sizeof id);
+  uint32_t busy = rate_cycles ? 100 - (uint32_t)((uint64_t)rate_idle * 100 / rate_cycles) : 0;
+  char up[24], os[24];
+  FormatTime(up, sizeof up, time_us_64());
+  FormatTime(os, sizeof os, time_us_64() - boot_us);
+  LINE("Board\tTFR/911H: a Hitachi 6309 run by a Raspberry Pi RP2350B\n");
+  LINE("Firmware\tv4 tfr911h, built %s %s\n", __DATE__, __TIME__);
+  // The chip's temperature sensor reads nonsense on some boards (its ADC
+  // supply or reference): say so rather than give a silly number.
+  float t = ChipTemperature();
+  char temp[24];
+  if (t > -20 && t < 110) snprintf(temp, sizeof temp, ", chip at %.0f C", t);
+  else temp[0] = 0;
+  LINE("Pico\tRP2350B at %lu MHz, %luK SRAM%s\n",
+       (unsigned long)(clock_get_hz(clk_sys) / 1000000), (unsigned long)(SRAM_END - SRAM_BASE) / 1024, temp);
+  LINE("Pico ID\t%s\n", id);
+  LINE("6309\t%lu.%02lu MHz (measured), %lu%% busy, in 6809 mode\n",
+       (unsigned long)(rate_cycles / 1000000), (unsigned long)(rate_cycles / 10000 % 100),
+       (unsigned long)busy);
+  LINE("6309 RAM\t%uK in the Pico, through a GIME-style MMU (8K blocks)\n", (unsigned)L2_RAM_KILOS);
+  LINE("Interrupts\t%lu IRQs/s: GIME VBORD 60 Hz clock, 6850 ACIA\n", (unsigned long)rate_irqs);
+  LINE("Disk\tEmuDsk at $FF80, served by the tether over USB: %lu ops, %lu/s\n",
+       (unsigned long)stat_disk_ops, (unsigned long)rate_disk);
+  LINE("Console\t6850 ACIA at $FF14: %lu bytes out, %lu keys in\n",
+       (unsigned long)stat_tx_bytes, (unsigned long)stat_rx_keys);
+  LINE("Sound\tSN76489 at $FF41 (%lu writes), PWM audio on GPIO 8, keyclick %s\n",
+       (unsigned long)audio::stat_chip_writes, (audio::control & 1) ? "on" : "off");
+  LINE("Clock\t%s\n", wall_seconds ? "set from the PC by the tether" : "not set (no tether time yet)");
+  LINE("Uptime\tPico %s, NitrOS-9 %s\n", up, os);
+#undef LINE
+  info_len = p - info_text;
+  info_pos = 0;
+  __dmb();
+  info_request = false;
+  info_ready = true;
 }
 
 }  // namespace l2
