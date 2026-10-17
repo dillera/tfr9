@@ -1,0 +1,1436 @@
+% manual.tex -- TFR/911H NitrOS-9 Reference Pages.
+%
+% Set in the manner of Digital Equipment Corporation's ULTRIX reference
+% pages of the early 1990s: Times text, Helvetica headings hung in the
+% left margin, name(section) running heads.
+%
+% Build:  make -C .. manual     (or: xelatex manual.tex, twice)
+
+\documentclass[10pt,twoside,openany]{book}
+\usepackage[letterpaper,top=0.85in,bottom=0.9in,inner=1.05in,outer=0.95in,
+            headheight=14pt,headsep=0.3in,footskip=0.45in]{geometry}
+\usepackage{fontspec}
+\setmainfont{Times}
+\setsansfont{Helvetica}[Scale=0.92]
+\setmonofont{Courier}[Scale=0.95]
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{array,tabularx,longtable,booktabs}
+\usepackage{alltt}
+\usepackage[hidelinks,pdftitle={TFR/911H NitrOS-9 Reference Pages},
+            pdfauthor={The TFR/9 Project}]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.7ex plus 0.2ex}
+\renewcommand{\arraystretch}{1.15}
+\raggedbottom
+\setlength{\emergencystretch}{2em}
+
+% ── Little helpers ─────────────────────────────────────────────────
+\newcommand{\cmd}[1]{\textbf{#1}}            % a command name
+\newcommand{\var}[1]{\textit{#1}}            % something you supply
+\newcommand{\file}[1]{\texttt{#1}}           % a path, address, register
+\newcommand{\key}[1]{\textsf{\small #1}}     % a key: \key{Ctrl/C}
+\newcommand{\rp}[2]{\textbf{#1}(#2)}         % a reference page
+\newcommand{\type}[1]{\texttt{\textbf{#1}}}  % what you type, in text
+\newcommand{\sans}[1]{\textsf{#1}}
+
+% Examples: alltt, small Courier; \textbf for what you type.
+\newenvironment{ex}{\par\vspace{0.3ex}\small\begin{alltt}}{\end{alltt}\vspace{0.3ex}}
+\newenvironment{exsmall}{\par\vspace{0.3ex}\scriptsize\begin{alltt}}{\end{alltt}\vspace{0.3ex}}
+
+% ── Running heads and feet ─────────────────────────────────────────
+\newcommand{\thesectname}{}
+\newcommand{\therefname}{}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[LE,RO]{\sffamily\bfseries\small\therefname}
+\fancyhead[RE,LO]{\sffamily\bfseries\small\therefname}
+\fancyfoot[LE,RO]{\sffamily\small\thepage}
+\fancyfoot[RE,LO]{\sffamily\small\thesectname}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[LE,RO]{\sffamily\small\thepage}
+  \fancyfoot[RE,LO]{\sffamily\small\thesectname}}
+
+% Pages numbered chapter-page, as DEC numbered them: 1-1, 1-2, ... A-1.
+\makeatletter
+\newcommand{\chapterpages}{%
+  \renewcommand{\thepage}{\thechapter--\arabic{page}}\setcounter{page}{1}}
+
+% Chapter openings: a rule, the number big at the right, the title.
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{0.4in}%
+  {\color{black!75}\hrule height 2pt}\vspace{6pt}%
+  \noindent\begin{minipage}[b]{0.78\textwidth}\raggedright
+    \sffamily\bfseries\fontsize{24}{28}\selectfont #1\end{minipage}%
+  \hfill{\sffamily\bfseries\fontsize{48}{48}\selectfont\color{black!70}\thechapter}\par
+  \vspace{4pt}\hrule height 0.5pt\vspace{0.45in}}
+\renewcommand{\@makeschapterhead}[1]{%
+  \vspace*{0.4in}{\color{black!75}\hrule height 2pt}\vspace{6pt}%
+  \noindent{\sffamily\bfseries\fontsize{24}{28}\selectfont #1}\par
+  \vspace{4pt}\hrule height 0.5pt\vspace{0.45in}}
+
+% Headings within chapters: Helvetica, numbered like 1.2.
+\renewcommand{\section}{\@startsection{section}{1}{0pt}{3.2ex plus 1ex}{1.2ex}%
+  {\sffamily\bfseries\large}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{0pt}{2.4ex plus 0.6ex}{0.8ex}%
+  {\sffamily\bfseries\normalsize}}
+\setcounter{secnumdepth}{2}
+
+% The table of contents, in Helvetica.
+\renewcommand{\@pnumwidth}{2.8em}
+\renewcommand{\@tocrmarg}{3.6em}
+\renewcommand*{\l@chapter}[2]{\addpenalty{-\@highpenalty}\vskip 1.1em plus 1pt
+  {\setlength{\@tempdima}{2em}\parindent\z@ \rightskip\@pnumwidth
+   \parfillskip -\@pnumwidth \leavevmode\sffamily\bfseries
+   \advance\leftskip\@tempdima \hskip -\leftskip #1\nobreak\hfil
+   \nobreak\hb@xt@\@pnumwidth{\hss #2}\par}\vskip 0.3em}
+\renewcommand{\l@section}{\@dottedtocline{1}{1.5em}{2.6em}}
+\renewcommand{\l@subsection}{\@dottedtocline{2}{4.1em}{3.2em}}
+\makeatother
+
+% ── Reference pages ────────────────────────────────────────────────
+% \refsection{4}{Special Files} starts a group of reference pages.
+\newcommand{\refsection}[2]{%
+  \clearpage
+  \renewcommand{\therefname}{}%
+  \renewcommand{\thesectname}{#2}%
+  \section*{Section #1: #2}%
+  \addcontentsline{toc}{section}{Section #1: #2}}
+
+% \refentry{vi}{1}{a small vi} starts one reference page.
+\newcommand{\refentry}[3]{%
+  \clearpage
+  \renewcommand{\therefname}{#1(#2)}%
+  \phantomsection
+  \addcontentsline{toc}{subsection}{#1(#2)\quad\textit{#3}}}
+
+% The body of a reference page: headings hang in the left margin.
+\newenvironment{refpage}{%
+  \begin{list}{}{%
+    \setlength{\leftmargin}{1.3in}\setlength{\labelwidth}{1.2in}%
+    \setlength{\labelsep}{0.1in}\setlength{\itemsep}{1.6ex}%
+    \setlength{\parsep}{0.7ex}\setlength{\topsep}{0pt}\setlength{\listparindent}{0pt}%
+    \renewcommand{\makelabel}[1]{\sffamily\bfseries ##1\hfil}}}%
+  {\end{list}}
+\newcommand{\rh}[1]{\item[#1]}
+
+% Two-column tables of keys or options inside a reference page.
+\newenvironment{keys}[1][1.1in]{\par\tabularx{\linewidth}[t]{@{}>{\raggedright\arraybackslash}p{#1}>{\raggedright\arraybackslash}X@{}}}%
+  {\endtabularx\par}
+
+\begin{document}
+\frontmatter
+\pagestyle{empty}
+
+% ── Title page ─────────────────────────────────────────────────────
+\begin{titlepage}
+\sffamily
+\vspace*{0.9in}
+{\fontsize{30}{36}\selectfont\bfseries TFR/911H NitrOS-9\\[4pt] Reference Pages\par}
+\vspace{10pt}
+{\Large Commands, Special Files, Games, and Maintenance\par}
+\vspace{0.5in}
+{\color{black!75}\hrule height 2pt}
+\vspace{0.3in}
+\begin{tabular}{@{}l@{}}
+\bfseries Order Number: TFR-911H-RP-A
+\end{tabular}
+
+\vspace{0.3in}
+\begin{minipage}{0.72\textwidth}
+\rmfamily\normalsize
+This manual describes the commands, games, and tools added to NitrOS-9
+Level 2 on the TFR/911H single board computer, the hardware the TFR/911H
+firmware presents to OS-9, and how to build and maintain the system. It
+begins with an introduction to OS-9 Level 1 and Level 2 as they run on the
+board.
+\end{minipage}
+
+\vspace{0.35in}
+\begin{tabular}{@{}l l@{}}
+\bfseries Revision/Update Information: & This is a new manual.\\[3pt]
+\bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
+\bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
+\end{tabular}
+
+\vfill
+{\bfseries\large the tfr/9 project\par}
+{\small github.com/strickyak/tfr9\par}
+\end{titlepage}
+
+% ── Copyright page ─────────────────────────────────────────────────
+\clearpage
+\vspace*{\fill}
+{\small
+\textbf{First Printing, October 2026}
+
+The information in this document is subject to change without notice and
+should not be construed as a commitment by anyone in particular. The
+software described in this document is furnished as source code, and may
+be used, copied, and changed under the terms of the licenses that come
+with it.
+
+No responsibility is assumed for the use or reliability of software on
+equipment that was soldered together at a kitchen table.
+
+\copyright{} The TFR/9 Project contributors, 2026. All rights reserved.
+
+\medskip
+\textbf{Trademarks.} OS-9 is a trademark of Microware Systems Corporation.
+NitrOS-9 is the work of the NitrOS-9 Project. Zork is a registered
+trademark of Infocom, Inc. Tetris is a trademark of The Tetris Company.
+Raspberry Pi is a trademark of Raspberry Pi Ltd. Color Computer and
+CoCo are associated with Tandy Corporation. ULTRIX and DEC are
+trademarks of Digital Equipment Corporation.
+
+\medskip
+\textbf{About the design.} This manual is typeset in the manner of
+Digital Equipment Corporation's ULTRIX reference pages of the early 1990s,
+as a tribute. It is not a Digital document, and it has nothing to do with
+Digital Equipment Corporation or its successors.
+
+\medskip
+This document was prepared with \LaTeX{} from
+\file{v4/nitros9-l2/doc/manual.tex}.
+}
+\clearpage
+
+\pagestyle{fancy}
+\renewcommand{\thesectname}{Contents}
+\setcounter{page}{3}
+\tableofcontents
+
+% ── Preface ────────────────────────────────────────────────────────
+\chapter*{About This Manual}
+\addcontentsline{toc}{chapter}{About This Manual}
+\renewcommand{\thesectname}{About This Manual}
+
+This manual describes the software that turns a TFR/911H into a small,
+complete OS-9 system: NitrOS-9 Level 2, booted by the board's firmware,
+with a disk, a clock, a Unix-flavored set of commands, an editor, a sound
+chip, and games. It also describes the hardware that the firmware
+emulates for OS-9, and how to rebuild everything.
+
+\section*{Audience}
+This manual is for anyone with a TFR/911H on their desk: people who know
+some Unix and want to find their way around OS-9, CoCo veterans who want
+to know what is different about this machine, and people who want to
+change the firmware or the disk. No knowledge of OS-9 is assumed in
+Chapter~1.
+
+\section*{Organization}
+This manual has two chapters and two appendices:
+
+\begin{tabularx}{\linewidth}{@{}>{\bfseries}l X@{}}
+Chapter 1 & Introduces the TFR/911H, OS-9 Level 1 and Level 2, the
+TurbOS and NitrOS-9 systems that run on the board, and a first
+session.\\
+Chapter 2 & Contains the reference pages, grouped as ULTRIX grouped
+them: Section 1, Commands; Section 4, Special Files (the hardware);
+Section 6, Games; and Section 8, Maintenance.\\
+Appendix A & Explains how to connect a speaker.\\
+Appendix B & Describes how the software was tested.\\
+\end{tabularx}
+
+\section*{Related Documents}
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item \file{v4/nitros9-l2/README.md}, which this manual expands on.
+\item The NitrOS-9 documentation, at \file{nitros9.org} and in the
+NitrOS-9 source tree under \file{docs}.
+\item \textit{OS-9 Level Two} for the Tandy Color Computer 3, whose
+commands NitrOS-9 still follows closely.
+\item The TFR/9 hardware reference, on the \file{strickyak/tfr9} wiki.
+\end{itemize}
+
+\section*{Conventions}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.3in}X@{}}
+\toprule
+\textbf{Convention} & \textbf{Meaning}\\
+\midrule
+\texttt{OS9:} & The NitrOS-9 Shell prompt.\\
+\texttt{TCL>} & The TFR/911H firmware's console prompt, before an OS boots.\\
+\texttt{\$} & A shell prompt on the computer the board is plugged into.\\
+\type{bold type} & In examples, what you type.\\
+\var{italic} & Something you supply: a file name, a number.\\
+\texttt{[ ]} & In syntax, an optional part. Do not type the brackets.\\
+\texttt{|} & In syntax, a choice: \texttt{on|off} means \texttt{on} or \texttt{off}.\\
+\key{Ctrl/C} & Hold down the Ctrl key while you press C. Also written \texttt{\^{}C}.\\
+\key{Return} & The Return (Enter) key.\\
+\rp{cmd}{n} & The reference page for \cmd{cmd} in Section~\var{n}.\\
+\file{\$FF41} & A hexadecimal number, often an address in the 6309's I/O page.\\
+\bottomrule
+\end{tabularx}
+
+% ═══════════════════════════════════════════════════════════════════
+\mainmatter
+\chapter{Introduction}
+\chapterpages
+\renewcommand{\thesectname}{Introduction}
+
+This chapter introduces the TFR/911H, the two levels of OS-9, the two
+OS-9 systems the board runs, and what was added to NitrOS-9 Level 2 for
+it. It ends with a first session at the keyboard.
+
+\section{The TFR/911H}
+
+The TFR/911H is a single board computer built around a genuine Hitachi
+HD6309 microprocessor---the CMOS cousin of Motorola's 6809, with extra
+registers and a faster native mode---and a Raspberry Pi RP2350B
+microcontroller. Everything that is not the CPU is done by the RP2350B:
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item It makes the 6309's E and Q clocks, one bus cycle at a time.
+\item It is the memory: 256K of the RP2350B's 520K of SRAM, behind an
+emulated MMU.
+\item It is every I/O device: a serial port for the console, a hard disk,
+a clock, interrupt timers, a sound chip.
+\end{itemize}
+One of the RP2350B's two cores runs the 6309's bus; the other talks USB
+to a program on your computer, the \emph{tether}, which is the board's
+terminal, its disk drive, and its clock. The 6309 runs at about 2.8 to
+3.2~MHz---faster than the 1.79~MHz of the fastest Color Computer.
+
+The TFR/9 family of boards was designed to make very cheap 6809-family
+computers that run OS-9. Its design files and software are at
+\file{github.com/strickyak/tfr9}.
+
+\section{OS-9 Level 1 and Level 2}
+
+OS-9 was written by Microware Systems Corporation in 1979 and 1980 for
+the Motorola 6809. It is a real-time, multitasking, multi-user operating
+system that will look familiar to anyone who knows Unix: a hierarchical
+file system, a shell with pipes and redirection, devices that are files,
+processes with parents and children. It was written to be small and to
+run from ROM, so everything in OS-9 is a \emph{module}: a
+position-independent, re-entrant block of code or data with a header and
+a CRC, which the system can find in memory by name. The kernel, the
+device drivers, and the commands you run are all modules.
+
+The 6809 can address only 64K of memory, and OS-9 comes in two
+\emph{levels} that differ in what they do about that.
+
+\begin{description}\setlength{\itemsep}{0.5ex}
+\item[\sans{Level 1}] runs everything in a single 64K address space: the
+kernel, every process, every module. It needs no memory management
+hardware, which made it right for the first Color Computers. Tandy sold
+OS-9 Level One for the Color Computer in 1983.
+
+\item[\sans{Level 2}] uses a memory management unit to give each process
+its own 64K address space, made of 8K blocks drawn from a larger physical
+memory---up to 2M. The kernel lives in a space of its own. Processes cannot
+see or damage each other's memory, and many more can run at once. Tandy
+sold OS-9 Level Two for the Color Computer~3, whose GIME chip has the
+MMU, in 1987.
+\end{description}
+
+NitrOS-9 began in the 1990s as a rewrite of OS-9 that made use of the
+Hitachi 6309's extra registers and instructions. Today the NitrOS-9
+Project maintains it as open source, for both the 6309 and the 6809, for
+Level 1 and Level 2, and for many machines besides the Color Computer.
+
+\section{Level 1 on the TFR/911H: TurbOS}
+
+When the TFR/911H firmware starts, it waits at its console prompt,
+\texttt{TCL>}, a small Tcl interpreter (see \rp{tcl}{8}). Typing
+\type{bye} there starts \emph{TurbOS}, a small OS-9 Level 1 system that
+the firmware loads into the 6309's memory as a single 64K image, from its
+own flash.
+
+TurbOS runs without a disk. Its kernel, I/O manager, SCF terminal manager,
+terminal driver, Shell, and a handful of commands (\cmd{mdir}, \cmd{mfree},
+\cmd{procs}, \cmd{sleep}) are modules in the image. Its prompt is
+\texttt{TOS:}:
+\begin{ex}
+TOS:\textbf{mdir}
+ Module directory at 00:00:59
+kernel  init  tk  ioman  scf  scvt  term  go  shell  mfree  mdir  procs  sleep
+\end{ex}
+TurbOS comes from the TFR/9 project's TurboLab work, in the
+\file{v4/turbolab} directory of the TFR/9 source. The rest of this manual is about Level 2.
+
+\section{Level 2 on the TFR/911H: NitrOS-9 V3.3.0}
+
+Typing \type{l2} at the \texttt{TCL>} prompt starts NitrOS-9/6809 Level 2
+V3.3.0, built for the Color Computer~3. The firmware copies a small
+launcher and the kernel's boot track into memory and resets the 6309,
+which boots in about half a second:
+\begin{ex}
+NitrOS-9/6809 Level 2 V3.3.0
+Tandy Color Computer 3
+(C) 2014 The NitrOS-9 Project
+Fri Oct 16 17:23:34 2026
+http://www.nitros9.org
+
+NitrOS-9 Level 2 on the TFR/911H.  Unix-style commands: man unix
+
+Shell
+
+OS9:
+\end{ex}
+
+\subsection{The machine NitrOS-9 sees}
+
+NitrOS-9 thinks it is on a Color Computer~3. The firmware emulates as
+much of one as OS-9 uses, and a little more:
+
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Device} & \textbf{Address} & \textbf{What it is}\\
+\midrule
+RAM & & 256K in 32 blocks of 8K; 184K free for programs\\
+GIME MMU & \file{\$FF90}--\file{\$FF91}, \file{\$FFA0}--\file{\$FFAF} & Two task maps; the constant page at \file{\$FE00}\\
+GIME timer & \file{\$FF92} & The VBORD interrupt, 60 times a second: the system clock\\
+6850 ACIA & \file{\$FF14}--\file{\$FF15} & The console, \file{/Term}\\
+SN76489 & \file{\$FF41} & A sound chip: three tones and noise\\
+Control & \file{\$FF42} & Keyclicks, the bell, raw arrow keys\\
+Info port & \file{\$FF43}--\file{\$FF44} & The firmware's report on itself\\
+EmuDsk & \file{\$FF80}--\file{\$FF86} & A virtual hard disk, \file{/DD} and \file{/H0}\\
+Clock & \file{\$FFC0}--\file{\$FFC7} & Date and time, from your computer\\
+\bottomrule
+\end{tabularx}
+
+\rp{tfr911h}{4} describes each of these.
+
+\subsection{The disk}
+
+The disk is a file on your computer, \file{v4/nitros9-l2/level2.dsk}: an
+RBF disk of 99,999 sectors (24.4M) that the tether serves to EmuDsk a
+sector at a time. It holds \file{OS9Boot}, the rest of the operating
+system, which the kernel loads at boot; the commands in \file{/DD/CMDS};
+the system files \file{errmsg} and \file{helpmsg} in \file{/DD/SYS}; and
+story files for \rp{zm}{6} in \file{/DD/GAMES}. Whatever you save goes to
+the file at once.
+
+\subsection{The modules}
+
+These are in memory once the system is up (\rp{info}{1} lists them):
+
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.45in}X@{}}
+\toprule
+\textbf{Modules} & \textbf{What they do}\\
+\midrule
+\file{REL Boot Krn} & Relocate the boot track, load \file{OS9Boot} from EmuDsk, and the kernel\\
+\file{Init} & The system's settings: startup program, devices, table sizes\\
+\file{KrnP2 KrnP3} & The rest of the kernel, and its error-message extension\\
+\file{IOMan} & The I/O manager\\
+\file{Clock Clock2} & The 60~Hz tick, and the real-time clock (\file{clock2\_tfr911})\\
+\file{SCF sc6850 Term} & The terminal file manager, the 6850 driver, \file{/Term}\\
+\file{RBF EmuDsk DD H0} & The disk file manager, the EmuDsk driver, \file{/DD} and \file{/H0}\\
+\file{PipeMan Piper Pipe} & Pipes\\
+\file{SysGo Shell} & The first process, and the Shell it starts\\
+\bottomrule
+\end{tabularx}
+
+\section{What Was Added}
+
+These are the commands, games, and tools described in Chapter~2. Each has
+a \cmd{man} page on the board too: type \type{man} \var{name}.
+
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.25in}X@{}}
+\toprule
+\textbf{Reference page} & \textbf{Summary}\\
+\midrule
+\rp{unix}{1} & \cmd{ls}, \cmd{cd}, \cmd{cat}, \cmd{cp}, \cmd{mv}, \cmd{rm},
+\cmd{ps}, \cmd{df}, and other Unix names for OS-9 commands\\
+\rp{vi}{1} & A small vi, also called \cmd{vim}\\
+\rp{info}{1} & Everything the system knows about itself\\
+\rp{grep}{1} & Print lines that contain a string\\
+\rp{pwd}{1} & Print the data or execution directory\\
+\rp{clear}{1} & Clear the screen\\
+\rp{beep}{1}, \rp{click}{1} & Ring the bell; turn keyclicks on and off\\
+\rp{tfr911h}{4} & The hardware the firmware emulates\\
+\rp{sn76489}{4} & Programming the sound chip\\
+\rp{tetris}{6} & Tetris, with music\\
+\rp{zm}{6} & A Z-machine, for Zork and the other Infocom games\\
+\rp{tether}{8} & The program that is the board's terminal and disk\\
+\rp{tcl}{8} & The firmware's console: \cmd{l2}, \cmd{bye}, \cmd{beep}, \cmd{click}\\
+\rp{nitros9-l2}{8} & Building the system and keeping a disk up to date\\
+\bottomrule
+\end{tabularx}
+
+\section{A First Session}
+
+Plug the TFR/911H into a USB port and, in the \file{v4} directory of the
+TFR/9 source, run \file{run-l2.sh}. It starts the tether, which boots
+NitrOS-9 by typing \type{l2} for you (or reconnects, if NitrOS-9 is
+already running):
+\begin{ex}
+$ \textbf{WIRE=/dev/cu.usbmodem31201 sh run-l2.sh}
+TFR/911H on /dev/cu.usbmodem31201, disk .../nitros9-l2/level2.dsk.
+^C goes to OS-9; quit with ^] .
+\end{ex}
+Then look around. \cmd{man unix} lists the Unix-style names; \cmd{ls -l}
+lists a directory; \cmd{info} shows the whole system:
+\begin{ex}
+OS9:\textbf{ls -l /dd/cmds}
+OS9:\textbf{cd /dd}
+OS9:\textbf{pwd}
+/DD
+OS9:\textbf{info}
+\end{ex}
+Write a file with \cmd{vi}, and look at it with \cmd{cat}:
+\begin{ex}
+OS9:\textbf{vi notes}
+OS9:\textbf{cat notes}
+\end{ex}
+Play something:
+\begin{ex}
+OS9:\textbf{zm zork1}
+OS9:\textbf{tetris}
+\end{ex}
+\key{Ctrl/C} interrupts the program that is running, as on Unix. To leave
+the tether, press \key{Ctrl/]}; NitrOS-9 keeps running on the board, and
+\file{run-l2.sh} will reconnect to it.
+
+OS-9 differs from Unix in a few ways you will meet early:
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item Each process has two current directories: the \emph{data}
+directory, for files (\cmd{cd}, \cmd{pwd}), and the \emph{execution}
+directory, where commands are found (\cmd{chx}, \cmd{pxd}). Both start
+at \file{/DD} and \file{/DD/CMDS}.
+\item The pipe symbol is \texttt{!}, not \texttt{|}. \texttt{>>} redirects
+standard error; there is no append. \texttt{\&} runs a command in the
+background, as on Unix.
+\item File names are not case sensitive. Text files end their lines with
+a carriage return, not a line feed.
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════
+\chapter{Reference Pages}
+\chapterpages
+\renewcommand{\thesectname}{Reference Pages}
+
+The reference pages follow, in four sections. Within a section they are in
+alphabetical order. Each page has the same parts, where they apply:
+\textbf{Name}, \textbf{Syntax}, \textbf{Description}, \textbf{Options},
+\textbf{Restrictions}, \textbf{Examples}, \textbf{Files}, and \textbf{See
+Also}. The commands that came with NitrOS-9 are not described here; use
+\cmd{man} on the board for those.
+
+% ─────────────────────────────────────────────────────────────────── 1
+\refsection{1}{Commands}
+This section describes the commands added to NitrOS-9 Level~2 for the TFR/911H. The commands that come with NitrOS-9 are described by \cmd{man} on the board, and in the NitrOS-9 documentation.
+
+\begin{tabularx}{\linewidth}{@{}>{\bfseries}p{1.3in}X@{}}
+\toprule
+\textnormal{\textbf{Name}} & \textbf{Description}\\
+\midrule
+beep(1) & Ring the bell\\
+clear(1) & Clear the screen\\
+click(1) & Turn keyclicks on or off\\
+grep(1) & Print lines that contain a string\\
+info(1) & Show what the system and the hardware know about themselves\\
+pwd(1) & Print the data or execution directory\\
+unix(1) & Unix-style names for OS-9 commands: \textmd{ls, cd, cat, cp, mv, rm, ps, df,} \ldots\\
+vi(1) & A small vi, also called \textmd{vim}\\
+\bottomrule
+\end{tabularx}
+
+
+\refentry{beep}{1}{ring the bell}
+\begin{refpage}
+\rh{Name} \cmd{beep} -- ring the bell
+\rh{Syntax} \cmd{beep}
+\rh{Description}
+The \cmd{beep} command writes a bell character (\file{\$07}) to standard
+output. The terminal the tether runs in rings its bell, and the TFR/911H
+firmware, which sees the character go out through the 6850, plays an
+880~Hz tone for 150~ms through the board's speaker, if one is connected
+and bit~1 of the control register at \file{\$FF42} is set (it is, at
+power on).
+
+Any program that prints \texttt{\^{}G} makes the same sound.
+\rh{Examples}
+To sound the bell when a long command finishes:
+\begin{ex}
+OS9:\textbf{copy /dd/bigfile /dd/backup; beep}
+\end{ex}
+\rh{See Also} \rp{click}{1}, \rp{sn76489}{4}, \rp{tfr911h}{4}
+\end{refpage}
+
+\refentry{clear}{1}{clear the screen}
+\begin{refpage}
+\rh{Name} \cmd{clear} -- clear the screen
+\rh{Syntax} \cmd{clear}
+\rh{Description}
+The \cmd{clear} command sends the ANSI sequences that move the cursor home
+and clear the screen of the terminal the tether runs in.
+\rh{See Also} \rp{unix}{1}
+\end{refpage}
+
+\refentry{click}{1}{turn keyclicks on or off}
+\begin{refpage}
+\rh{Name} \cmd{click} -- turn keyclicks on or off
+\rh{Syntax} \cmd{click} \texttt{on|off}
+\rh{Description}
+When keyclicks are on, the TFR/911H's speaker gives a short tick each time
+a key reaches OS-9. The \cmd{click} command turns them on or off by setting
+or clearing bit~0 of the control register at \file{\$FF42}. They are on at
+power on. With no argument, or any other, \cmd{click} prints its usage.
+
+The \texttt{TCL>} console has a \cmd{click} command of its own, which does
+the same before an OS is booted; see \rp{tcl}{8}.
+\rh{Restrictions}
+\rp{tetris}{6} turns keyclicks off while it runs, and puts them back as
+they were when it ends.
+\rh{See Also} \rp{beep}{1}, \rp{sn76489}{4}, \rp{tfr911h}{4}
+\end{refpage}
+
+\refentry{grep}{1}{print lines that contain a string}
+\begin{refpage}
+\rh{Name} \cmd{grep} -- print lines that contain a string
+\rh{Syntax} \cmd{grep} [\texttt{-i}] [\texttt{-n}] \var{pattern} [\var{path}]
+\rh{Description}
+The \cmd{grep} command prints each line of \var{path}, or of standard input
+if no path is given, that contains \var{pattern}. The pattern is a plain
+string, not a regular expression. It may be given in double quotes, which
+it needs if it contains spaces, or without them.
+
+This is NitrOS-9's \cmd{grep}, changed in two ways: the pattern need not be
+quoted, and it ends cleanly at the end of a file, where the original
+reported a spurious error.
+\rh{Options}
+\begin{keys}[0.5in]
+\texttt{-i} & Ignore case.\\
+\texttt{-n} & Put each line's number in front of it.\\
+\end{keys}
+\rh{Examples}
+\begin{ex}
+OS9:\textbf{grep -n total sample.c}
+OS9:\textbf{dir -e ! grep -i tetris}
+\end{ex}
+\rh{See Also} \rp{unix}{1}
+\end{refpage}
+
+\refentry{info}{1}{show the system and the hardware}
+\begin{refpage}
+\rh{Name} \cmd{info} -- show what the system and the hardware know about themselves
+\rh{Syntax} \cmd{info} [\texttt{-p}]
+\rh{Description}
+The \cmd{info} command prints a report in eight parts:
+
+\begin{keys}[0.85in]
+\sans{System} & The OS name and version, the machine, the kernel's level
+and version and the CPU it was built for, the startup program, disk and
+console, the sizes of the device and interrupt tables, and the date. These
+come from the \file{Init} module.\\
+\sans{Memory} & The RAM, what is free (and the largest piece that is
+free), and what is used by modules and by everything else, from the
+system's memory block map.\\
+\sans{Processes} & Every process: its number, its parent, its user, its
+priority, its memory, its state, and the program it runs. The one marked
+\texttt{*} is \cmd{info} itself.\\
+\sans{Devices} & Every device descriptor in memory, with its file manager,
+driver, port, and drive, and how many paths are open on it. A device that
+nothing is using is not attached, and shows \texttt{-}.\\
+\sans{Disks} & Each disk drive (once, though several descriptors may name
+it): its name, the date it was made, its size, and its free space, from
+its sector~0 and its allocation bitmap.\\
+\sans{Interrupts} & The entries in the IRQ polling table, with the driver
+and device each belongs to.\\
+\sans{Modules} & The names of the modules in memory, and their total size.\\
+\sans{Hardware} & The TFR/911H firmware's own report: the board, the
+firmware's build date, the RP2350B's clock, memory and ID, the 6309's
+measured speed and how busy it is, the interrupt rate, the disk, console
+and sound counters, whether the clock was set, and the uptime.\\
+\end{keys}
+
+The kernel's tables are in the system's own address space. \cmd{info}
+reads them as NitrOS-9's \cmd{procs}, \cmd{devs}, and \cmd{mdir} do: it
+gets the system process's descriptor with \texttt{F\$GPrDsc}, and uses
+the memory map in it to copy what it needs with \texttt{F\$CpyMem}. The
+hardware report comes from the firmware's info port; see \rp{tfr911h}{4}.
+\rh{Options}
+\begin{keys}[0.5in]
+\texttt{-p} & Plain text: leave out the escape sequences that make the
+headings bold, for saving the report to a file.\\
+\end{keys}
+\rh{Restrictions}
+The RP2350B's temperature sensor reads nonsense on some boards, so the
+chip's temperature is shown only when its reading is believable.
+
+On firmware without the info port, the hardware part says so and is
+otherwise empty.
+\rh{Examples}
+Part of a report, taken with \rp{tetris}{6} running in the background:
+\begin{exsmall}
+OS9:\textbf{info}
+NitrOS-9/6809 Level 2 V03.3.0 on the TFR/911H
+
+System
+  OS          NitrOS-9/6809 Level 2 V03.3.0
+  Machine     Tandy Color Computer 3, as the TFR/911H pretends to be
+  Kernel      Level 2, version 3.3.0, built for the 6809
+  Startup     runs SysGo, disk /DD, console /Term
+  Tables      39 device slots, 21 IRQ polling slots
+  Date        2026/10/17 01:25:15
+
+Memory
+  RAM         248K in 31 blocks of 8K
+  Free        160K (largest piece 152K)
+  In use      24K modules, 64K system and processes
+
+Processes
+   ID  Parent  User  Prio  Memory  State      Program
+   1     0       0     255   0                  (the system)
+   2     1       0     128   768     waiting    Shell
+   3     2       0     128   4K      waiting    tetris
+  *4     2       0     128   6K      running    info
+
+Devices
+  Device    Type  Manager  Driver    Port   Drive  Users
+  /Term       SCF   SCF      sc6850    $FF14         4
+  /DD         RBF   RBF      EmuDsk    $FF80  0      5
+  /H0         RBF   RBF      EmuDsk    $FF80  0      -
+  /Pipe       Pipe  PipeMan  Piper     $0000         -
+
+Disks
+  /DD = /H0
+              "tfr911-level2.dsk", made 2026/10/17
+              24.4M (99999 sectors), 24.0M free (98%)
+
+Hardware (from the TFR/911H firmware)
+  Board       TFR/911H: a Hitachi 6309 run by a Raspberry Pi RP2350B
+  Pico        RP2350B at 250 MHz, 520K SRAM
+  6309        3.24 MHz (measured), 70% busy, in 6809 mode
+  Interrupts  59 IRQs/s: GIME VBORD 60 Hz clock, 6850 ACIA
+  Sound       SN76489 at $FF41 (182 writes), PWM audio on GPIO 8, keyclick off
+  Uptime      Pico 0m 56s, NitrOS-9 0m 54s
+\end{exsmall}
+To keep a report:
+\begin{ex}
+OS9:\textbf{info -p >/dd/sysinfo}
+\end{ex}
+\rh{See Also} \rp{tfr911h}{4}; NitrOS-9's \cmd{mdir}, \cmd{mfree}, \cmd{procs}, \cmd{devs}, \cmd{irqs}, \cmd{free}
+\end{refpage}
+
+\refentry{pwd}{1}{print the data or execution directory}
+\begin{refpage}
+\rh{Name} \cmd{pwd}, \cmd{pxd} -- print the data or execution directory
+\rh{Syntax} \cmd{pwd}\\ \cmd{pxd}
+\rh{Description}
+An OS-9 process has two current directories. The \cmd{pwd} command prints
+the \emph{data} directory, where file names that do not begin with
+\texttt{/} are looked for, and which \cmd{cd} (or \cmd{chd}) changes. The
+\cmd{pxd} command prints the \emph{execution} directory, where commands
+are looked for, which \cmd{chx} changes.
+
+Both are NitrOS-9's \cmd{pd}, built twice.
+\rh{Examples}
+\begin{ex}
+OS9:\textbf{cd /dd/games}
+OS9:\textbf{pwd}
+/DD/GAMES
+OS9:\textbf{pxd}
+/DD/CMDS
+\end{ex}
+\rh{See Also} \rp{unix}{1}
+\end{refpage}
+
+\refentry{unix}{1}{Unix-style names for OS-9 commands}
+\begin{refpage}
+\rh{Name} \cmd{unix} -- Unix-style names for OS-9 commands
+\rh{Syntax} \cmd{ls} [\texttt{-l}] [\var{path}]\quad \cmd{cd} \var{path}\quad \cmd{cat} \var{path}\quad \ldots
+\rh{Description}
+The TFR/911H's NitrOS-9 knows the names a Unix user reaches for first. Most
+are \emph{aliases}: tiny modules that run the OS-9 command that does the
+job, passing along their arguments. Two are built into the Shell, and the
+rest are real commands. \type{man unix} on the board lists them.
+
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Name} & \textbf{Runs} & \textbf{What it does}\\
+\midrule
+\cmd{ls} [\texttt{-l}] & \cmd{dir} [\texttt{-e}] & List a directory; \texttt{-l} gives the long form\\
+\cmd{ll} & \cmd{dir -e} & List a directory, long form\\
+\cmd{cat} & \cmd{list} & Print a text file\\
+\cmd{cp} & \cmd{copy} & Copy a file\\
+\cmd{mv} & \cmd{rename} & Rename a file or directory\\
+\cmd{rm} & \cmd{del} & Delete files\\
+\cmd{mkdir} & \cmd{makdir} & Make a directory\\
+\cmd{rmdir} & \cmd{deldir} & Delete a directory and what is in it\\
+\cmd{ps} & \cmd{procs} & List processes; \texttt{-e} lists everyone's\\
+\cmd{df} & \cmd{free} & Show free space on a disk\\
+\cmd{less} & \cmd{more} & Show a file a screen at a time\\
+\cmd{man} & \cmd{help} & Show help for a command\\
+\cmd{uname} & \cmd{echo} & Say what this is\\
+\cmd{vim} & \cmd{vi} & The editor; see \rp{vi}{1}\\
+\midrule
+\cmd{cd} & built in & Change the data directory (the same as \cmd{chd})\\
+\cmd{exit} & built in & Leave this Shell\\
+\midrule
+\cmd{pwd}, \cmd{pxd} & \cmd{pd} & See \rp{pwd}{1}\\
+\cmd{grep}, \cmd{clear} & & See \rp{grep}{1}, \rp{clear}{1}\\
+\bottomrule
+\end{tabularx}
+
+An alias puts any extra arguments of its own in front of yours, and then
+chains to the real command with \texttt{F\$Chain}, so it costs no extra
+process. \cmd{cd} and \cmd{exit} are added to the table of built-in
+commands in a copy of the Shell's source.
+\rh{Restrictions}
+These are OS-9 commands under Unix names, and they behave as OS-9
+commands. \cmd{mv} cannot move a file to another directory. \cmd{rmdir}
+deletes the directory's contents too, after asking. \cmd{rm} takes no
+options.
+
+The Shell's syntax is OS-9's, not the Bourne shell's: the pipe symbol is
+\texttt{!}, \texttt{>>} redirects standard error (there is no append),
+\texttt{<>} and \texttt{>>>} redirect several paths at once, and
+\texttt{\&} runs a command in the background.
+\rh{Examples}
+\begin{ex}
+OS9:\textbf{ls -l /dd}
+OS9:\textbf{mkdir /dd/src}
+OS9:\textbf{cp notes /dd/src/notes}
+OS9:\textbf{cd /dd/src}
+OS9:\textbf{ps}
+\end{ex}
+\rh{Files}
+\begin{keys}[1.5in]
+\file{nitros9-l2/unix.tcl} & The list of aliases. Add a line to it and
+rebuild to make another; see \rp{nitros9-l2}{8}.\\
+\end{keys}
+\rh{See Also} \rp{grep}{1}, \rp{pwd}{1}, \rp{vi}{1}
+\end{refpage}
+
+\refentry{vi}{1}{a small vi}
+\begin{refpage}
+\rh{Name} \cmd{vi}, \cmd{vim} -- a small vi
+\rh{Syntax} \cmd{vi} [\texttt{-w} \var{cols}] [\texttt{-h} \var{rows}] [\var{file}]
+\rh{Description}
+The \cmd{vi} command is a screen editor in the manner of the Unix
+\cmd{vi}, with most of the commands people use without thinking about
+them. It starts in \emph{normal} mode, where keys are commands. The
+insert commands enter \emph{insert} mode, where keys are text, until you
+press \key{Esc}. A colon starts a \emph{command line} at the bottom of the
+screen.
+
+The bottom line shows messages, \texttt{-- INSERT --} in insert mode, and
+the cursor's line and column. Lines longer than the screen are not wrapped:
+the view scrolls sideways.
+
+Most normal-mode commands take a count in front: \type{3dd} deletes three
+lines, \type{5j} moves down five, \type{2d3w} deletes six words.
+
+\sans{\textbf{Moving}}
+\begin{keys}
+\texttt{h j k l} & Left, down, up, right. The arrow keys too.\\
+\texttt{w b e} & To the next word, back a word, to the end of the word.
+\texttt{W B E} do the same with words that are anything but blanks.\\
+\texttt{0 \^{} \$} & To the start of the line, its first non-blank, its end.\\
+\texttt{G}, \texttt{gg} & To the last line, or to line \var{n} with a count;
+to the first line.\\
+\texttt{H M L} & To the top, middle, or bottom of the screen.\\
+\texttt{f}\var{c} \texttt{F}\var{c} \texttt{t}\var{c} \texttt{T}\var{c} & To the next
+(\texttt{f}) or previous (\texttt{F}) \var{c} on the line, or just before it
+(\texttt{t}, \texttt{T}). \texttt{;} repeats; \texttt{,} repeats the other way.\\
+\texttt{\%} & To the bracket that matches the next \texttt{( [ \{ \} ] )}.\\
+\texttt{\{ \}} & Back or on a paragraph (to a blank line).\\
+\texttt{+ - Return} & Down or up a line, to its first non-blank.\\
+\texttt{\^{}F \^{}B} & Forward or back a screen. Page Down and Page Up too.\\
+\texttt{\^{}D \^{}U} & Down or up half a screen.\\
+\end{keys}
+
+\sans{\textbf{Searching}}
+\begin{keys}
+\texttt{/}\var{text}, \texttt{?}\var{text} & Find \var{text} forward or backward,
+wrapping around the file.\\
+\texttt{n N} & Find it again, the same way or the other.\\
+\texttt{*} & Find the word under the cursor.\\
+\end{keys}
+
+\sans{\textbf{Inserting}}
+\begin{keys}
+\texttt{i a} & Insert before, or append after, the cursor.\\
+\texttt{I A} & Insert at the line's first non-blank, or append at its end.\\
+\texttt{o O} & Open a new line below, or above.\\
+\end{keys}
+In insert mode, \key{Backspace} deletes the character before the cursor
+(and can join lines), \texttt{\^{}W} the word before it, \texttt{\^{}U} the line
+before it; \key{Return} splits the line, \key{Tab} inserts a tab, and the
+arrow keys move the cursor. \key{Esc} goes back to normal mode.
+
+\sans{\textbf{Changing}}
+\begin{keys}
+\texttt{x X} & Delete the character under, or before, the cursor.\\
+\texttt{D C} & Delete, or change, to the end of the line.\\
+\texttt{s S} & Change a character, or the whole line.\\
+\texttt{r}\var{c} & Replace the character with \var{c} (\texttt{r} \key{Return} splits the line).\\
+\texttt{J} & Join this line and the next.\\
+\texttt{\~{}} & Switch the case of the character, and move on.\\
+\texttt{>> <<} & Indent the line by a tab, or take one away.\\
+\texttt{p P} & Put the last deleted or yanked text after, or before, the cursor
+(below or above, for whole lines).\\
+\texttt{u} & Undo the last change. Again and again, back to the start.\\
+\texttt{.} & Do the last change again.\\
+\end{keys}
+
+\sans{\textbf{Operators}} \texttt{d} (delete), \texttt{c} (change),
+\texttt{y} (yank), \texttt{>} and \texttt{<} (indent) work on the text that
+any motion moves over: \type{dw}, \type{c\$}, \type{y3j}, \type{dG},
+\type{d/end}, \type{>\}}. Doubled, they work on whole lines: \type{dd},
+\type{cc}, \type{yy}, \type{>>}. \texttt{Y} is \texttt{yy}.
+
+\sans{\textbf{Other}}
+\begin{keys}
+\texttt{ZZ} & Write the file if it was changed, and quit.\\
+\texttt{ZQ} & Quit without writing.\\
+\texttt{\^{}G} & Show the file's name, length, and where you are in it.\\
+\texttt{\^{}L} & Redraw the screen.\\
+\end{keys}
+
+\sans{\textbf{Command line}}
+\begin{keys}[1.75in]
+\texttt{:w} [\var{file}] & Write the file, or write to \var{file}.\\
+\texttt{:q}, \texttt{:q!} & Quit; \texttt{!} quits even if there are unsaved changes.\\
+\texttt{:wq}, \texttt{:x} & Write and quit (\texttt{:x} writes only if there were changes).\\
+\texttt{:e}[\texttt{!}] [\var{file}] & Edit another file, or the same file again.\\
+\texttt{:r} \var{file} & Read \var{file} in below the current line.\\
+\texttt{:}\var{n}, \texttt{:\$} & Go to line \var{n}, or the last line.\\
+\texttt{:}[\var{range}]\texttt{s/}\var{old}\texttt{/}\var{new}\texttt{/}[\texttt{g}] &
+Replace \var{old} with \var{new}, once in each line or everywhere
+(\texttt{g}).\\
+\texttt{:}[\var{range}]\texttt{d} & Delete lines.\\
+\texttt{:help} & A reminder of these.\\
+\end{keys}
+A \var{range} is a line number, \texttt{.} (this line), \texttt{\$} (the
+last), two of them with a comma (\texttt{2,10}), or \texttt{\%} (every
+line). Without one, a command works on the current line.
+\rh{Options}
+\begin{keys}[0.8in]
+\texttt{-w} \var{cols} & The terminal's width (default 80).\\
+\texttt{-h} \var{rows} & The terminal's height (default 24).\\
+\end{keys}
+\rh{Restrictions}
+Searches are for plain text, not regular expressions. There is one
+register, there are no marks, no visual mode, no \texttt{:set}, and no
+redo. The text must fit in memory: about 25K. Undo remembers as many
+changes as fit in its own space, and forgets the oldest first.
+
+OS-9 text files end their lines with a carriage return. \cmd{vi} reads
+files that end them with CR, LF, or CR~LF, and writes CR.
+
+The arrow keys work in insert mode because \cmd{vi} sets bit~7 of
+\file{\$FF42} while it runs, so that the firmware sends them untranslated
+(see \rp{tfr911h}{4}). If \cmd{vi} is killed, they stay that way until
+the next \cmd{vi} ends.
+\rh{Examples}
+Change every \texttt{foo} to \texttt{bar}, write, and quit:
+\begin{ex}
+\textbf{:\%s/foo/bar/g}
+\textbf{:wq}
+\end{ex}
+Delete from here to the line that contains \texttt{end}, then put it back:
+\begin{ex}
+\textbf{d/end}
+\textbf{u}
+\end{ex}
+\rh{See Also} \rp{unix}{1}, \rp{tfr911h}{4}
+\end{refpage}
+
+% ─────────────────────────────────────────────────────────────────── 4
+\refsection{4}{Special Files}
+This section describes the hardware the TFR/911H firmware presents to NitrOS-9: the addresses in the 6309's I/O page that a program can read and write, and what they do.
+
+\begin{tabularx}{\linewidth}{@{}>{\bfseries}p{1.3in}X@{}}
+\toprule
+\textnormal{\textbf{Name}} & \textbf{Description}\\
+\midrule
+sn76489(4) & The sound chip\\
+tfr911h(4) & The hardware the firmware emulates: memory, interrupts, console, disk, clock, keyboard\\
+\bottomrule
+\end{tabularx}
+
+
+\refentry{sn76489}{4}{the sound chip}
+\begin{refpage}
+\rh{Name} \cmd{sn76489} -- the sound chip
+\rh{Syntax} \file{\$FF41}, write only
+\rh{Description}
+The TFR/911H firmware emulates a Texas Instruments SN76489 sound
+generator at \file{\$FF41}, the address of the one in the Color Computer's
+Game Master Cartridge. It has three square-wave tone voices and a noise
+voice, each with sixteen volumes. The firmware mixes them at 31,250
+samples a second, with the keyclick and bell sounds, and plays the result
+as pulse-width-modulated audio on GPIO~8 (see Appendix~A).
+
+The chip is programmed one byte at a time. A byte with bit~7 set
+\emph{latches} a voice and a register and gives the low four bits of the
+value; a byte with bit~7 clear gives the high six bits of a tone's period:
+
+\begin{tabularx}{\linewidth}{@{}l X@{}}
+\toprule
+\textbf{Byte} & \textbf{Meaning}\\
+\midrule
+\texttt{1 vv 0 dddd} & Voice \texttt{vv} (0--2): low 4 bits of its period\\
+\texttt{0 0 dddddd} & The high 6 bits of the latched voice's period\\
+\texttt{1 vv 1 aaaa} & Voice \texttt{vv} (0--3): attenuation, 2~dB a step;
+\texttt{1111} is off\\
+\texttt{1 11 0 0 f rr} & The noise voice: \texttt{f}=1 white noise, 0
+periodic; \texttt{rr} its rate, 0--2, or 3 to follow voice~2\\
+\bottomrule
+\end{tabularx}
+
+A tone's period \var{N} (1--1023) gives a frequency of
+3,579,545\,/\,(32\,×\,\var{N})~Hz, so A440 is \var{N}~=~254, and the
+lowest note is about 109~Hz.
+
+The control register at \file{\$FF42} is read and write:
+\begin{keys}[0.6in]
+bit 0 & Keyclicks on (see \rp{click}{1}).\\
+bit 1 & The bell sounds on \texttt{\^{}G} (see \rp{beep}{1}).\\
+bit 7 & Arrow keys untranslated (see \rp{tfr911h}{4}).\\
+\end{keys}
+\rh{Examples}
+In C, compiled with CMOC, from \rp{tetris}{6}:
+\begin{ex}
+#define SND (*(volatile unsigned char *)0xFF41)
+
+void note(unsigned char voice, unsigned n) \{   /* n = 3579545/32/Hz */
+    SND = 0x80 | (voice << 5) | (n & 15);
+    SND = (n >> 4) & 0x3F;
+\}
+
+void volume(unsigned char voice, unsigned char att) \{ /* 15 is off */
+    SND = 0x90 | (voice << 5) | att;
+\}
+\end{ex}
+\rh{See Also} \rp{beep}{1}, \rp{click}{1}, \rp{tfr911h}{4}, Appendix~A
+\end{refpage}
+
+\refentry{tfr911h}{4}{the hardware the firmware emulates}
+\begin{refpage}
+\rh{Name} \cmd{tfr911h} -- the hardware the TFR/911H firmware emulates for NitrOS-9 Level 2
+\rh{Description}
+To NitrOS-9, the TFR/911H is a small Color Computer~3. The firmware's
+second core answers every bus cycle of the 6309: reads and writes of RAM
+go to the RP2350B's memory through the emulated MMU, and those of the I/O
+page, \file{\$FF00}--\file{\$FFFF}, go to the devices below. Locations not
+listed read back what was last written to them. The 6309 runs in 6809
+mode.
+
+\sans{\textbf{Memory}}\quad 256K of RAM, in 32 blocks of 8K. The GIME's MMU
+maps eight blocks into each of two tasks' 64K address spaces:
+\file{\$FFA0}--\file{\$FFA7} for task~0 and \file{\$FFA8}--\file{\$FFAF}
+for task~1. \file{\$FF90} bit~6 enables the MMU and bit~5 the GIME's
+interrupts; \file{\$FF91} bit~0 picks the task. \file{\$FE00}--\file{\$FEFF}
+is the constant page, the same in every map.
+
+\sans{\textbf{Interrupts}}\quad \file{\$FF92} bit~3 enables the vertical
+border (VBORD) interrupt, which a timer in the firmware raises 60 times a
+second; reading \file{\$FF92} acknowledges it. The 6850's interrupt joins
+it on the 6309's IRQ line. There is no FIRQ.
+
+\sans{\textbf{Console}}\quad An MC6850 ACIA at \file{\$FF14} (status and
+control) and \file{\$FF15} (data). Its transmitter is always ready;
+characters go to the tether at once.
+
+\sans{\textbf{Disk}}\quad EmuDsk, a virtual hard disk whose sectors the
+tether reads and writes in a file:
+\begin{keys}[1.05in]
+\file{\$FF80}--\file{\$FF82} & The logical sector number, 24 bits.\\
+\file{\$FF83} & Write a command: 0 reads a sector, 1 writes one. Read the
+status: 0 if it worked.\\
+\file{\$FF84}--\file{\$FF85} & The address of the 256-byte buffer.\\
+\file{\$FF86} & The drive number.\\
+\end{keys}
+The bus waits while the tether moves the sector over USB, so the status is
+ready in the instruction after the command.
+
+\sans{\textbf{Clock}}\quad \file{\$FFC0}--\file{\$FFC7} hold the century,
+year, month, day, day of the week, hour, minute, and second, in binary,
+in the format of Jeff Vavasour's CoCo~3 emulator. The tether sends your
+computer's local time when it connects, and the firmware keeps it going.
+
+\sans{\textbf{Sound}}\quad \file{\$FF41} and \file{\$FF42}; see \rp{sn76489}{4}.
+
+\sans{\textbf{Info port}}\quad The firmware's report on itself, for
+\rp{info}{1}. Write \file{\$A5} to \file{\$FF43}; when \file{\$FF43} reads
+1, each read of \file{\$FF44} gives the report's next character, and 0
+after the last. The report is lines of the form
+\var{label}~\texttt{TAB}~\var{value}~\texttt{LF}.
+
+\sans{\textbf{Keyboard}}\quad Keys typed in the tether reach OS-9 through the
+6850. The tether turns Delete into Backspace and Enter into a carriage
+return. The arrow keys arrive as a Color Computer~3 sends them, unless
+bit~7 of \file{\$FF42} is set:
+
+\begin{tabularx}{\linewidth}{@{}l l l X@{}}
+\toprule
+\textbf{Key} & \textbf{CoCo code} & \textbf{Bit 7 set} & \textbf{Note}\\
+\midrule
+Up & \file{\$0C} & 128 & \\
+Down & \file{\$0A} & 129 & \\
+Left & \file{\$08} & 130 & The same as Backspace, as CoCo code\\
+Right & \file{\$09} & 131 & The same as Tab, as CoCo code\\
+Page Up & --- & 132 & Dropped, as CoCo code\\
+Page Down & --- & 133 & Dropped, as CoCo code\\
+\bottomrule
+\end{tabularx}
+\rh{Files}
+\begin{keys}[2.2in]
+\file{v4/tfr911h/v4\_nitros9\_l2.h} & The emulation.\\
+\file{v4/tfr911h/v4\_audio.h} & The sound chip and the mixer.\\
+\end{keys}
+\rh{See Also} \rp{info}{1}, \rp{sn76489}{4}, \rp{tether}{8}
+\end{refpage}
+
+% ─────────────────────────────────────────────────────────────────── 6
+\refsection{6}{Games}
+This section describes the games. Both draw with ANSI escape sequences on the terminal the tether runs in.
+
+\begin{tabularx}{\linewidth}{@{}>{\bfseries}p{1.3in}X@{}}
+\toprule
+\textnormal{\textbf{Name}} & \textbf{Description}\\
+\midrule
+tetris(6) & Tetris, with music\\
+zm(6) & A Z-machine, for Zork and the other Infocom games\\
+\bottomrule
+\end{tabularx}
+
+
+\refentry{tetris}{6}{Tetris, with music}
+\begin{refpage}
+\rh{Name} \cmd{tetris} -- Tetris, with music
+\rh{Syntax} \cmd{tetris}
+\rh{Description}
+Pieces fall into a well ten cells wide and twenty deep. Move and turn them
+so they make full rows, which disappear. The game draws in color on the
+terminal the tether runs in, shows the next piece and a ghost of where the
+falling one will land, and deals the seven pieces from a shuffled bag, so
+no piece is ever long in coming.
+\begin{keys}[1.3in]
+\key{Left} \key{Right}, \texttt{a d} & Move the piece.\\
+\key{Up}, \texttt{w} & Turn it.\\
+\key{Down}, \texttt{s} & Drop it a row.\\
+\key{Space} & Drop it all the way.\\
+\texttt{p} & Pause.\\
+\texttt{m} & Turn the music off or on.\\
+\texttt{q} & Quit.\\
+\end{keys}
+Clearing one, two, three, or four rows at once scores 40, 100, 300, or
+1,200 points times the level plus one. Dropping a piece scores a point a
+row, or two with \key{Space}. Every ten rows is a new level, and the
+pieces fall faster, up to level~19.
+
+With a speaker connected, the game plays \emph{Korobeiniki} on the sound
+chip, faster as the levels go up, with sounds for moving, turning,
+landing, clearing rows, a new level, and the end of the game.
+\rh{Restrictions}
+It needs an ANSI color terminal of at least 80 by 24. It turns keyclicks
+off while it runs.
+\rh{See Also} \rp{click}{1}, \rp{sn76489}{4}
+\end{refpage}
+
+\refentry{zm}{6}{a Z-machine, for Infocom's games}
+\begin{refpage}
+\rh{Name} \cmd{zm} -- play Infocom's games, and others written for the Z-machine
+\rh{Syntax} \cmd{zm} [\texttt{-w} \var{cols}] [\texttt{-h} \var{rows}] [\texttt{-m} \var{kbytes}] [\texttt{-d}] \var{story}
+\rh{Description}
+Infocom wrote its games for an imaginary computer, the Z-machine, and sold
+them with an interpreter for each real one. \cmd{zm} is a Z-machine
+interpreter for OS-9. It plays \emph{version~3} story files: most of
+Infocom's games from 1980 to 1987 (Zork I--III, The Hitchhiker's Guide to
+the Galaxy, Planetfall, Enchanter, Deadline, and many more), and games
+written with Inform and compiled with \texttt{-v3}.
+
+\cmd{zm} looks for \var{story}, then \var{story}\texttt{.z3}, and, if the
+name has no directory in it, the same in \file{/DD/GAMES}. So \type{zm
+zork1} finds \file{/DD/GAMES/zork1.z3}.
+
+The top line of the screen is the status line: where you are, and your
+score and moves, or the time in the games that keep it. The text scrolls
+beneath it, word-wrapped to the screen's width, and pauses with
+\texttt{[MORE]} when a screen goes by without your typing. Games that
+split the screen, as Seastalker does, can.
+
+The game's commands \texttt{save} and \texttt{restore} ask for a file name,
+offering the story's name with \texttt{.sav}; save files go in the data
+directory. \texttt{restart}, \texttt{verify}, and \texttt{quit} work as in
+the games' manuals.
+
+The part of the story the game can change, its \emph{dynamic memory}, is
+kept in RAM. So is as much of the rest as fits---about 40K, got by growing
+the process's data area with \texttt{F\$Mem}. If the story is bigger than
+that, the rest is read from the file in 512-byte pages as the game needs
+them, and the least recently used page gives way. Panic, which is 37K, is
+held in memory whole; Zork~I, at 87K, is paged, and still answers a
+command in under a second.
+\rh{Options}
+\begin{keys}[0.8in]
+\texttt{-w} \var{cols} & The terminal's width (default 80).\\
+\texttt{-h} \var{rows} & The terminal's height (default 24).\\
+\texttt{-m} \var{kbytes} & Use at most this much memory for the story
+(8--60).\\
+\texttt{-d} & A dumb terminal: no status line, no escape sequences, no
+\texttt{[MORE]}.\\
+\end{keys}
+\rh{Restrictions}
+Only version~3 stories are played; \cmd{zm} says which version a story is
+if it is another. There is no transcript (\texttt{script}), and there are
+no sounds but the two beeps of The Lurking Horror, which it plays on the
+sound chip.
+\rh{Diagnostics}
+If the story does something impossible, \cmd{zm} stops with a message
+such as:
+\begin{ex}
+*** zm: stack underflow (PC $1A2B3) ***
+\end{ex}
+\rh{Examples}
+\begin{ex}
+OS9:\textbf{zm zork1}
+ZORK I: The Great Underground Empire
+...
+West of House
+You are standing in an open field west of a white house, with a boarded
+front door.
+There is a small mailbox here.
+
+>\textbf{open mailbox}
+\end{ex}
+To put story files on the disk, see \rp{nitros9-l2}{8}.
+\rh{Files}
+\begin{keys}[1.6in]
+\file{/DD/GAMES/*.z3} & Story files.\\
+\var{story}\file{.sav} & Saved games.\\
+\end{keys}
+\rh{See Also} \rp{nitros9-l2}{8}, Appendix~B
+\end{refpage}
+
+% ─────────────────────────────────────────────────────────────────── 8
+\refsection{8}{Maintenance}
+This section describes the programs that run on the computer the TFR/911H is plugged into, the firmware's console, and how to build the system and keep a disk up to date.
+
+\begin{tabularx}{\linewidth}{@{}>{\bfseries}p{1.3in}X@{}}
+\toprule
+\textnormal{\textbf{Name}} & \textbf{Description}\\
+\midrule
+nitros9-l2(8) & Build NitrOS-9 Level 2 for the TFR/911H, and keep a disk up to date\\
+tcl(8) & The firmware's console\\
+tether(8) & The board's terminal, disk, and clock\\
+\bottomrule
+\end{tabularx}
+
+
+\refentry{nitros9-l2}{8}{build the system and keep a disk up to date}
+\begin{refpage}
+\rh{Name} \cmd{nitros9-l2} -- build NitrOS-9 Level 2 for the TFR/911H, and keep a disk up to date
+\rh{Syntax} \cmd{make} [\var{target}] [\texttt{DISK=}\var{image}] [\texttt{STORIES=}\var{files}] [\texttt{OS9\_TOOL=}\var{path}]
+\rh{Description}
+The \file{v4/nitros9-l2} directory builds NitrOS-9 Level 2 for the TFR/911H
+from a NitrOS-9 source tree, with the commands described in this manual,
+and makes a disk image. It needs \cmd{lwasm} from LWTOOLS, \cmd{os9} from
+ToolShed, \cmd{tclsh}, \cmd{python3}, and, for the C programs, CMOC.
+
+\begin{keys}[1.35in]
+\texttt{make} & Build the kernel, \file{OS9Boot}, the commands, and
+\file{build/tfr911-level2.dsk}, and the firmware's copy of the kernel
+track, \file{../tfr911h/nitros9\_l2\_rom.h}.\\
+\texttt{make install} & Bring the disk \var{DISK} (default
+\file{level2.dsk}) up to date: a new \file{OS9Boot}, and every file in
+\file{CMDS} and \file{SYS}. Other files are left alone.\\
+\texttt{make stories} & Copy the story files named by \var{STORIES} to
+\file{/DD/GAMES} on \var{DISK}.\\
+\texttt{make build/zm-host} & Build \cmd{zm} for this computer, for
+testing; also \texttt{build/vi-host}.\\
+\texttt{make clean} & Remove the build.\\
+\end{keys}
+
+The firmware is built from \file{v4}: \type{make build/tfr911h\_v4.uf2},
+then loaded with \cmd{picotool}.
+\rh{Restrictions}
+Quit the tether before changing the disk it is serving, and reset the
+board after \texttt{make install} so that it boots the new
+\file{OS9Boot}.
+\rh{Examples}
+\begin{ex}
+$ \textbf{cd v4/nitros9-l2}
+$ \textbf{make OS9_TOOL=~/toolshed/build/unix/os9/os9}
+$ \textbf{make install DISK=level2.dsk}
+$ \textbf{make stories STORIES="~/if/zork1.z3 ~/if/hhgg.z3" DISK=level2.dsk}
+\end{ex}
+\rh{Files}
+\begin{keys}[1.45in]
+\file{rmake-l2.tcl} & Which modules go in \file{OS9Boot} and on the disk.\\
+\file{unix.tcl} & The Unix-style aliases, and changes to the Shell and \cmd{grep}.\\
+\file{modules/} & The TFR/911H's own modules: the clock, \cmd{clear}, \cmd{beep}, \cmd{click}.\\
+\file{games/} & The C programs: \cmd{tetris}, \cmd{zm}, \cmd{vi}, \cmd{info}.\\
+\file{helpmsg.unix} & The \cmd{man} pages for what was added.\\
+\file{doc/manual.tex} & This manual.\\
+\end{keys}
+\rh{See Also} \rp{tcl}{8}, \rp{tether}{8}
+\end{refpage}
+
+\refentry{tcl}{8}{the firmware's console}
+\begin{refpage}
+\rh{Name} \cmd{tcl} -- the TFR/911H firmware's console
+\rh{Syntax} \texttt{TCL>} \var{command}
+\rh{Description}
+When the TFR/911H starts, its firmware waits at the \texttt{TCL>} prompt,
+a Tcl interpreter that runs on the RP2350B. Besides the Tcl language, it
+has these commands:
+
+\begin{keys}[1.3in]
+\cmd{l2} & Boot NitrOS-9 Level 2 from EmuDsk drive~0.\\
+\cmd{bye} & Boot TurbOS, the OS-9 Level 1 system in the firmware.\\
+\cmd{beep} [\var{hz} [\var{ms}]] & Play a tone through the speaker
+(default 880~Hz for 200~ms), to test the wiring.\\
+\cmd{click} [\texttt{on|off}] & Turn keyclicks on or off, and say which.\\
+\end{keys}
+\rh{Examples}
+\begin{ex}
+TCL> \textbf{beep 440 1000}
+TCL> \textbf{l2}
+\end{ex}
+\rh{See Also} \rp{click}{1}, \rp{tether}{8}
+\end{refpage}
+
+\refentry{tether}{8}{the board's terminal, disk, and clock}
+\begin{refpage}
+\rh{Name} \cmd{tether}, \cmd{run-l2.sh} -- the board's terminal, disk, and clock
+\rh{Syntax} \cmd{sh run-l2.sh}\\
+\cmd{tether} \texttt{-wire} \var{device} [\texttt{-disks} \var{images}] [\texttt{-boot} \var{command}] [\texttt{-pass\_ctrl\_c}] [\var{other options}]
+\rh{Description}
+The tether is a program on your computer that talks to the TFR/911H over
+USB. It is the board's terminal: what you type goes to the 6309, and what
+the 6309 prints appears in the window. It is the board's disk: it reads and
+writes the sectors of disk image files for EmuDsk. And it sets the board's
+clock when it connects.
+
+\file{v4/run-l2.sh} builds the tether and runs it with the options
+NitrOS-9 Level 2 needs. If NitrOS-9 is already running on the board, it
+simply reconnects.
+
+\begin{keys}[1.25in]
+\texttt{WIRE} & The board's USB serial device. On macOS, the only
+\file{/dev/cu.usbmodem*} device, if there is just one.\\
+\texttt{DISK} & The disk image for drive~0. The default,
+\file{nitros9-l2/level2.dsk}, is copied from the build the first time.\\
+\end{keys}
+\rh{Options}
+\begin{keys}[1.25in]
+\texttt{-wire} \var{device} & The serial device.\\
+\texttt{-disks} \var{images} & Disk image files, comma separated, for
+drives 0, 1, \ldots\\
+\texttt{-boot} \var{command} & A command to type at the \texttt{TCL>}
+prompt, such as \texttt{l2}. Ignored if the 6309 is already running.\\
+\texttt{-pass\_ctrl\_c} & Send \texttt{\^{}C} (and \texttt{\^{}\textbackslash} and \texttt{\^{}Z}) to
+the 6309, and quit the tether with \texttt{\^{}]} instead.\\
+\texttt{-level} \var{n} & The NitrOS-9 level, for the tether's
+diagnostics.\\
+\end{keys}
+\rh{Restrictions}
+Only one program can have the board's serial device open. Quit the tether
+before you flash the firmware or change a disk image it is serving.
+\rh{Files}
+\begin{keys}[1.25in]
+\file{v4/\_log} & The tether's diagnostics, including the firmware's
+statistics every ten seconds.\\
+\end{keys}
+\rh{See Also} \rp{nitros9-l2}{8}, \rp{tcl}{8}, \rp{tfr911h}{4}
+\end{refpage}
+
+% ═══════════════════════════════════════════════════════════════════
+\clearpage
+\appendix
+\renewcommand{\therefname}{}
+\chapter{Connecting a Speaker}
+\chapterpages
+\renewcommand{\thesectname}{Connecting a Speaker}
+
+The TFR/911H makes sound as pulse-width-modulated audio on GPIO~8 of the
+RP2350B: an 8-bit level carried at about 977~kHz, far above hearing. A
+filter and a small amplifier turn it into sound. The firmware was written
+for an Adafruit PAM8302, a 2.5~W class~D amplifier on a small board.
+
+\section{Wiring}
+
+GPIO~8 is pin~1 of the 2-by-10 header J3, and is not connected to the
+6309. Wire the PAM8302 like this:
+
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{J3 pin} & \textbf{Signal} & \textbf{PAM8302}\\
+\midrule
+2 & VBUS (5~V) & Vin\\
+6 & GND & GND, and A−\\
+1 & GPIO 8 & A+, through a 1~kΩ resistor, with a 10~nF capacitor from A+ to GND\\
+\bottomrule
+\end{tabularx}
+
+The resistor and capacitor make a low-pass filter that takes out the
+carrier. Connect the speaker to the PAM8302's + and − terminals, and
+turn its volume control down before you start.
+
+\section{Trying It}
+
+At the \texttt{TCL>} prompt, before an OS is booted:
+\begin{ex}
+TCL> \textbf{beep 440 1000}
+\end{ex}
+should play an A for a second. Then, in NitrOS-9, \cmd{beep} rings the
+bell, every key clicks (\cmd{click off} stops that), and \cmd{tetris}
+plays music.
+
+\section{How It Works}
+
+A timer interrupt on the RP2350B's first core runs 31,250 times a second.
+Each time, it takes any bytes the 6309 has written to the SN76489, works
+out the next sample of the three tone voices, the noise voice, and the
+keyclick or bell, adds them, and sets the PWM level. The 6309's writes
+reach it through a queue, so the core that runs the bus never waits.
+
+% ═══════════════════════════════════════════════════════════════════
+\chapter{How the Software Was Tested}
+\chapterpages
+\renewcommand{\thesectname}{How the Software Was Tested}
+
+The C programs were written so that the same source builds for OS-9 with
+CMOC and for a Unix computer with an ordinary C compiler. That let each one
+be tested against a reference on the big computer, and then on the board.
+
+\section{zm}
+
+\begin{itemize}\setlength{\itemsep}{0.3ex}
+\item CZECH, the Comprehensive Z-machine Emulation Checker, compiled for
+version~3 with Inform: all 349 of its tests pass, on the Unix build and on
+the TFR/911H's 6309, where the run takes about five seconds. They pass
+too with memory cut to 8K, which makes nearly every read a page from the
+file.
+\item Zork I, II, and III and Inform's Adventure: transcripts of
+the same commands give the same text, word for word, as \cmd{dfrotz}, a
+widely used interpreter, with the story wholly in memory and with only
+16K to 40K for it.
+\item On the board: Zork~I answers each command in 0.4 to 0.9 seconds;
+\texttt{save}, \texttt{restore}, \texttt{restart} work.
+\end{itemize}
+
+\section{vi}
+
+\begin{itemize}\setlength{\itemsep}{0.3ex}
+\item 123 editing commands---motions, operators, counts, undo,
+\texttt{.}, searches, \texttt{:s} and ranges---were typed into Vim and
+into \cmd{vi}, on a pseudo-terminal at the same pace, and the files they
+wrote compared: all the same.
+\item 27 sessions on a 300-line file with tabs and long lines checked that
+what \cmd{vi} shows is what is in the file, after scrolling, sideways
+scrolling, and edits.
+\item On the board: moving and typing answer in under 0.05 seconds,
+scrolling in 0.15, and replacing 178 strings on 116 lines in 1.8.
+\end{itemize}
+
+\section{info}
+
+Its report was compared with what NitrOS-9's own \cmd{procs}, \cmd{mdir},
+\cmd{mfree}, and \cmd{free} say, on the board, and with a program running
+in the background.
+
+\section{The Firmware}
+
+Each change was tried on the board: NitrOS-9 boots, the disk and clock
+work, Tetris's writes reach the sound chip (182 of them in one game, by
+the firmware's count), and the arrow keys arrive as they should with bit~7
+of \file{\$FF42} clear and set.
+
+\end{document}

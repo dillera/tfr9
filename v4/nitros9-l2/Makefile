@@ -133,8 +133,17 @@ stories:
 	done
 	$(OS9_TOOL) dir $(DISK),GAMES
 
+# The reference manual (needs XeLaTeX, and the Times, Helvetica and
+# Courier fonts that come with macOS).
+manual: doc/tfr911h-reference.pdf
+doc/tfr911h-reference.pdf: doc/manual.tex
+	cd doc && for pass in 1 2; do \
+	  xelatex -interaction=nonstopmode -halt-on-error -jobname=tfr911h-reference manual.tex >/dev/null || exit 1; \
+	done
+	cd doc && rm -f tfr911h-reference.aux tfr911h-reference.log tfr911h-reference.toc tfr911h-reference.out
+
 clean:
 	rm -rf build
 
 FORCE:
-.PHONY: all clean install stories FORCE
+.PHONY: all clean install stories manual FORCE

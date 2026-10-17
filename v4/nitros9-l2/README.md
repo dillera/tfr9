@@ -3,6 +3,9 @@
 The v4 TFR/911H firmware can boot NitrOS-9 Level 2 as well as TurbOS.
 At the `TCL>` prompt, `bye` starts TurbOS and `l2` starts NitrOS-9 Level 2.
 
+The reference manual, `doc/tfr911h-reference.pdf`, describes everything
+here in the manner of a 1990s ULTRIX manual; `make manual` rebuilds it.
+
 ## Quick start
 
 ```
