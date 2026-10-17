@@ -163,7 +163,7 @@ proc FinishMakefile {} {
     puts $w "SIMPLE_LWASM_FLAGS = --6309 --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --no-warn=ifp1 --format=os9"
     puts $w "BASIC09_LWASM_FLAGS = --6309 --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax --no-warn=ifp1 --format=os9"
     puts $w "LINKED_LWASM_FLAGS = --6309 --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export --no-warn=ifp1 --format=os9"
-    puts $w "USING = [nobraces [lmap i $::Using { list -I'$i/cmds'  -I'$i/modules/kernel'  -I'$i/modules'  -I'$i/' }]]  -I'$::DefsDir'  -I. "
+    puts $w "USING = -I'$::LocalDefs' [nobraces [lmap i $::Using { list -I'$i/cmds'  -I'$i/modules/kernel'  -I'$i/modules'  -I'$i/' }]]  -I'$::DefsDir'  -I. "
     puts $w ""
     puts $w "YEAR=[expr $Y-2000]"
     puts $w "MONTH=[expr 1$M-100]"
@@ -364,11 +364,14 @@ proc Create_hard_disk {name body} {
     set ::ProductTargets($name) $manifest
 }
 
-# Modules in ./modules (next to this script) take precedence over NitrOS-9's.
-set LocalModules [file normalize [file join [file dirname [info script]] modules]]
+# Modules in ./modules and ./fujinet/modules (next to this script) take
+# precedence over NitrOS-9's, and so do the definitions in ./fujinet/defs.
+set Here [file normalize [file dirname [info script]]]
+set LocalModules [list $Here/modules $Here/fujinet/modules]
+set LocalDefs $Here/fujinet/defs
 
 proc FindViaUsing {middirs name suffix} {
-    foreach dir [list $::LocalModules $::LocalBuild] {
+    foreach dir [concat $::LocalModules [list $::LocalBuild]] {
         foreach s $suffix {
             if [file exists $dir/$name$s] {
                 return $dir/$name$s
@@ -390,6 +393,20 @@ proc FindViaUsing {middirs name suffix} {
 ###########################################################################
 
 source [file join [file dirname [info script]] unix.tcl]
+
+# DriveWire through the FujiNet's becker port at $FF45 (see
+# ../tfr911h/v4_fujinet.h): disks /X0-/X3 (the FujiNet's disk slots 1-4)
+# and the network devices /N, /N1-/N5 that the fn* commands talk through.
+# No virtual-serial VIRQ: it would steal FujiNet replies (see fujinet/).
+set FUJINET_MODS {
+    rbdw
+    dwio=dwio,BECKER=1,BECKBASE=0xFF45,DWIO_NO_VIRQ=1
+    x0=dwdesc,DNum=0  x1=dwdesc,DNum=1  x2=dwdesc,DNum=2  x3=dwdesc,DNum=3
+    scdwv
+    n=scdwvdesc,Addr=255
+    n1=scdwvdesc,Addr=1  n2=scdwvdesc,Addr=2  n3=scdwvdesc,Addr=3
+    n4=scdwvdesc,Addr=4  n5=scdwvdesc,Addr=5
+}
 
 Platform tfr911 {
   Level level2 {
@@ -414,6 +431,28 @@ Platform tfr911 {
         rbf  emudsk
         dd_h0=emudskdesc,DNum=0,DD=1
         h0=emudskdesc,DNum=0
+        @FUJINET_MODS
+        pipeman piper pipe
+        sysgo_dd=sysgo,dd=1
+        shell_21
+    }
+
+    # Booting from the FujiNet instead: the kernel comes from the firmware
+    # as before, but boot_dw reads OS9Boot from DriveWire drive 0 (the
+    # FujiNet's disk slot 1), and /DD is /X0.  The tether's disk is /H0.
+    Create_track35_style_primary_boot "tfr911-level2-fn.t35" {
+        rel_80=rel,Width=80
+        boot_dw=boot_dw,BECKER=1,BECKBASE=0xFF45
+        krn
+    }
+    Create_os9boot_style_secondary_boot "tfr911-level2-fn.o9b" {
+        init krnp2 krnp3_perr ioman clock_60=clock,PwrLnFrq=60 clock2_tfr911
+        scf sc6850
+        term=term_sc6850,HwBASE=0xFF14,Pauses=0
+        rbf  emudsk
+        h0=emudskdesc,DNum=0
+        ddx0=dwdesc,DNum=0,DD=1
+        @FUJINET_MODS
         pipeman piper pipe
         sysgo_dd=sysgo,dd=1
         shell_21

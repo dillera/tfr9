@@ -8,6 +8,8 @@
 #       on macOS, the only /dev/cu.usbmodem* device, if there is just one.
 # DISK  Disk image served as drive 0 (/DD, /H0).  Default:
 #       nitros9-l2/level2.dsk, copied from nitros9-l2/build/ the first time.
+# BOOT  l2 (the default) boots from DISK; l2fn boots from the FujiNet's
+#       device slot 1 instead, and DISK is /H0 (see nitros9-l2/fujinet/).
 #
 # ^C goes to OS-9 (aborts the running command).  Quit tether with ^] .
 # If the 6309 is already running NitrOS-9, this just reconnects to it.
@@ -30,13 +32,13 @@ fi
 if [ -z "$WIRE" ]; then
   case "$(uname -s)" in
     Darwin)
-      set -- /dev/cu.usbmodem*
-      if [ $# -ne 1 ] || [ ! -e "$1" ]; then
+      # (Not with "set --", which would replace the arguments for tether.)
+      WIRE="$(ls /dev/cu.usbmodem* 2>/dev/null)"
+      if [ "$(echo "$WIRE" | grep -c .)" -ne 1 ]; then
         echo "Set WIRE to the TFR/911H's serial device; candidates:" >&2
         ls /dev/cu.usbmodem* >&2 2>/dev/null
         exit 1
       fi
-      WIRE="$1"
       ;;
     *)
       WIRE=/dev/ttyACM0
@@ -46,7 +48,8 @@ fi
 
 go build -o build/tether ./tether/ || exit 1
 
-echo "TFR/911H on $WIRE, disk $DISK.  ^C goes to OS-9; quit with ^] ." >&2
+BOOT="${BOOT:-l2}"
+echo "TFR/911H on $WIRE, disk $DISK, boot $BOOT.  ^C goes to OS-9; quit with ^] ." >&2
 mkdir -p /tmp/pc
-exec ./build/tether -wire "$WIRE" -disks "$DISK" -boot l2 -pass_ctrl_c \
+exec ./build/tether -wire "$WIRE" -disks "$DISK" -boot "$BOOT" -pass_ctrl_c \
   -level 2 -pc /tmp/pc -bind "" "$@" 2>_log

@@ -2,6 +2,7 @@
 Unix-style commands on the TFR/911H (try "man <name>"):
   ls ll cat cp mv rm mkdir rmdir pwd cd ps df less man
   grep clear uname exit vi vim info   and: tetris zm beep click
+FujiNet ("man fujinet"): fnconfig fnweather fnstatus fnlistdevs ...
 Most are aliases that run the OS-9 command shown by "man".
 OS-9 paths use / like Unix; /DD is the disk, . and .. work.
 Differences: pipes are "!" not "|"; ">>" redirects errors (there is no
@@ -100,3 +101,64 @@ Usage : Ring the bell: the terminal's, and the TFR/911H's speaker.
 @CLICK
 Syntax: click on|off
 Usage : Turn the TFR/911H's keyclicks on or off.
+@FUJINET
+FujiNet commands on the TFR/911H.  Slots count from 0: device slot 0
+is /X0 (the FujiNet's slot 1).  Host slot 1 is often its SD card.
+  fnconfig         FujiNet CONFIG: status, hosts, devices, WiFi
+  fnweather        the weather where you are
+  fnstatus         firmware version, WiFi network and IP settings
+  fnlisthosts      the eight host slots
+  fngethost  <host_slot>            show one host slot
+  fnsethost  <host_slot> <host>     set one host slot
+  fnmount    <host_slot>            mount a host
+  fnlistdevs       the four device slots, /X0-/X3
+  fngetdevfile <device_slot>        show a device slot's image
+  fnsetdevfile <device_slot> <host_slot> <mode> <path>
+                   put an image in a device slot (mode 1 read, 2 write)
+  fnmountimg <device_slot> [<mode>] mount a device slot's image
+At TCL>, l2fn boots NitrOS-9 from device slot 0 (/DD is then /X0).
+@FNCONFIG
+Syntax: fnconfig
+Usage : FujiNet CONFIG.  1 Status, 2 Hosts, 3 Devices, 4 WiFi, I info,
+        ? help, Q quit.  On Hosts: up/down, E edit, M mount, U unmount.
+        On Devices: up/down, B browse the host, E edit the path, M mount,
+        U eject.  On WiFi: S scan, E enter an SSID.  Leave /X0 alone
+        while it is /DD.
+@FNWEATHER
+Syntax: fnweather
+Usage : The weather where you are (by your IP address), from ip-api.com
+        and Open-Meteo.  R refresh, U units, L locate again, I info,
+        ? help, D the data received, Q quit.
+@FNSTATUS
+Syntax: fnstatus
+Usage : The FujiNet's firmware version, host name, WiFi network and IP
+        settings, and whether WiFi is connected.
+@FNLISTHOSTS
+Syntax: fnlisthosts
+Usage : List the FujiNet's eight host slots (0-7).
+@FNGETHOST
+Syntax: fngethost <host_slot>
+Usage : Show one host slot.
+@FNSETHOST
+Syntax: fnsethost <host_slot> <host>
+Usage : Set one host slot (a TNFS server's name, or SD), keeping the rest.
+@FNMOUNT
+Syntax: fnmount <host_slot>
+Usage : Mount a host, so its files can be put in device slots.
+@FNLISTDEVS
+Syntax: fnlistdevs
+Usage : List the four DriveWire device slots, /X0-/X3: host slot, mode
+        (1 read, 2 write) and image.
+@FNGETDEVFILE
+Syntax: fngetdevfile <device_slot>
+Usage : Show the image in one device slot.
+@FNSETDEVFILE
+Syntax: fnsetdevfile <device_slot> <host_slot> <mode> <path>
+Usage : Put the image <path> on host <host_slot> in a device slot, read
+        only (mode 1) or read/write (mode 2).  The FujiNet saves it.
+        Then fnmountimg mounts it.  Example, for /X1:
+          fnsetdevfile 1 1 2 /games/disk.dsk;  fnmountimg 1 2;  dir /x1
+@FNMOUNTIMG
+Syntax: fnmountimg <device_slot> [<mode>]
+Usage : Mount the image in a device slot, read only (mode 1, the default)
+        or read/write (mode 2).

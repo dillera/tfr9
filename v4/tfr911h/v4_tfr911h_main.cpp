@@ -838,6 +838,7 @@ void IN_RAM Engine__Foreground() {
 
 // Sound: PWM on GPIO 8, an SN76489 at $FF41, keyclicks and the bell.
 #include "v4_audio.h"
+#include "v4_fujinet.h"
 
 // NitrOS-9 Level 2, chosen with the Tcl command `l2` instead of `bye`.
 volatile bool boot_l2 = false;
@@ -859,6 +860,27 @@ void PollWallTime() {
 
 int l2_cmd(ClientData, Tcl_Interp*, int, char**) {
   boot_l2 = true;
+  return TCL_BYE;
+}
+
+// Tcl:  l2fn   NitrOS-9 Level 2, booting from the FujiNet's disk slot 1.
+// It mounts slot 1 first, since the FujiNet starts with its CONFIG disk
+// there; `l2fn -n` boots with whatever is mounted.
+int l2fn_cmd(ClientData, Tcl_Interp* interp, int argc, char* argv[]) {
+  if (!(argc > 1 && !strcmp(argv[1], "-n"))) {
+    static char result[120];
+    char name[40];
+    const char* err = fujinet::MountSlot(0, name, sizeof name);
+    if (err) {
+      snprintf(result, sizeof result, "FujiNet slot 1: %s", err);
+      Tcl_SetResult(interp, result, TCL_STATIC);
+      return TCL_ERROR;
+    }
+    cobs_printf("FujiNet slot 1: %s\n", name);
+  }
+  boot_l2 = true;
+  l2::from_fujinet = true;
+  fujinet::Flush();
   return TCL_BYE;
 }
 
@@ -910,6 +932,7 @@ static void tcl_repl_task(Coro& self) {
   gspoon::g_spoon_coro = &self;  // ls_cmd etc. call coro_yield(g_spoon_coro)
   cobs_printf("\nTFR911 TCL SHELL.  To exit TCL and launch 6809, type  bye \n");
   cobs_printf("To boot NitrOS-9 Level 2 instead (needs tether -disks=...), type  l2 \n");
+  cobs_printf("To boot NitrOS-9 Level 2 from the FujiNet's disk slot 1, type  l2fn \n");
 
   char line[256];
   while (true) {
@@ -1261,8 +1284,10 @@ void IN_RAM tfr911_background() {
   global_tcl_interp = Tcl_CreateInterp();
   register_tcl_commands(global_tcl_interp);
   Tcl_CreateCommand(global_tcl_interp, (char*)"l2", l2_cmd, NULL, NULL);
+  Tcl_CreateCommand(global_tcl_interp, (char*)"l2fn", l2fn_cmd, NULL, NULL);
   Tcl_CreateCommand(global_tcl_interp, (char*)"beep", beep_cmd, NULL, NULL);
   Tcl_CreateCommand(global_tcl_interp, (char*)"click", click_cmd, NULL, NULL);
+  Tcl_CreateCommand(global_tcl_interp, (char*)"fujinet", fujinet_cmd, NULL, NULL);
 
   // Create all coroutines upfront
   Coro tcl_repl_coro;
@@ -1385,6 +1410,7 @@ void IN_RAM tfr911_background() {
 #endif
 
       if (boot_l2) {
+        fujinet::Pump();
         l2::ServiceDisk();
         PollTermInput();
         l2::DeliverKeystroke();
@@ -1419,6 +1445,7 @@ int main() {
   stdio_usb_init();
   InitializePinsReturnDirections();
   audio::Init();
+  fujinet::Init();
 
   for (int i = 0; i < 3; i++) {
     gpio_put(LED, 1);

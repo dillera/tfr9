@@ -151,6 +151,23 @@ In NitrOS-9:
   codes 128-133, instead of the CoCo's codes, where left and right are
   the same as Backspace and Tab.
 
+## FujiNet
+
+With a FujiNet on GPIO 12/13, NitrOS-9 has four DriveWire disks
+(`/X0`-`/X3`, the FujiNet's device slots 1-4), the network devices `/N`,
+`/N1`-`/N5`, and the commands that manage the FujiNet: `fnstatus`,
+`fnlisthosts`, `fngethost`, `fnsethost`, `fnmount`, `fnlistdevs`,
+`fngetdevfile`, `fnsetdevfile`, `fnmountimg`, `fnconfig` (FujiNet CONFIG)
+and `fnweather`.  It can boot from the FujiNet too: `l2fn` at `TCL>`, or
+
+```
+make fujinet-disk                 # level2.dsk -> level2-fn.dsk, booting from the FujiNet
+BOOT=l2fn sh ../run-l2.sh         # once level2-fn.dsk is in the FujiNet's device slot 1
+```
+
+`fujinet/README.md` tells how: the wiring, the FujiNet's firmware, putting
+the disk on the FujiNet, and how it all works.
+
 ## What the firmware emulates
 
 `../tfr911h/v4_nitros9_l2.h` makes the TFR/911H look like a small CoCo 3,
@@ -167,6 +184,7 @@ the same way v3 ran Level 2 on the TFR/905H:
 | SN76489 | `$FF41` | write-only sound chip (see Sound) |
 | Sound control | `$FF42` | bit 0 keyclicks, bit 1 bell, bit 7 raw arrow keys |
 | Info port | `$FF43`-`$FF44` | write `$A5` to `$FF43`; when it reads 1, read the firmware's report from `$FF44` (`label TAB value LF` lines, then 0) |
+| Becker port | `$FF45`-`$FF46` | DriveWire to a FujiNet: `$FF45` bit 1 says a byte is waiting at `$FF46` (see `fujinet/`) |
 
 Other `$FFxx` locations read back what was last written.
 The 6309 runs in 6809 mode.
@@ -183,9 +201,13 @@ from a NitrOS-9 source tree.  It produces:
   without NitrOS-9).
 * `build/tfr911-level2.dsk`: a 99,999-sector disk with `OS9Boot`, `CMDS` and
   `startup`.  The file is sparse at first and grows as sectors are written.
+* `build/tfr911/level2/tfr911-level2-fn.t35` and `-fn.o9b`: the same, but
+  booting from DriveWire drive 0 (`boot_dw`, and `/DD` on `/X0`), for
+  `l2fn` (`../tfr911h/nitros9_l2fn_rom.h`), and `build/tfr911-level2-fn.dsk`.
 
 `modules/` holds TFR/911H-specific modules, which take precedence over
-NitrOS-9's.  The modules in `OS9Boot` and the commands on the disk are
+NitrOS-9's, as do the FujiNet's modules and definitions in `fujinet/`.
+The FujiNet commands are built from `fujinet/cmds/`.  The modules in `OS9Boot` and the commands on the disk are
 listed at the end of `rmake-l2.tcl`.
 
 ### Prerequisites

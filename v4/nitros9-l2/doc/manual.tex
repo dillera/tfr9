@@ -384,6 +384,7 @@ GIME timer & \file{\$FF92} & The VBORD interrupt, 60 times a second: the system 
 SN76489 & \file{\$FF41} & A sound chip: three tones and noise\\
 Control & \file{\$FF42} & Keyclicks, the bell, raw arrow keys\\
 Info port & \file{\$FF43}--\file{\$FF44} & The firmware's report on itself\\
+Becker port & \file{\$FF45}--\file{\$FF46} & DriveWire to a FujiNet: disks \file{/X0}--\file{/X3}, network \file{/N}\\
 EmuDsk & \file{\$FF80}--\file{\$FF86} & A virtual hard disk, \file{/DD} and \file{/H0}\\
 Clock & \file{\$FFC0}--\file{\$FFC7} & Date and time, from your computer\\
 \bottomrule
@@ -401,6 +402,11 @@ the system files \file{errmsg} and \file{helpmsg} in \file{/DD/SYS}; and
 story files for \rp{zm}{6} in \file{/DD/GAMES}. Whatever you save goes to
 the file at once.
 
+With a FujiNet attached, typing \type{l2fn} instead of \type{l2} boots from
+the FujiNet's first device slot, a copy of this disk on its SD card or a
+TNFS server; \file{/DD} is then the DriveWire disk \file{/X0}, and the
+tether's disk is \file{/H0}. See \rp{fujinet}{4}.
+
 \subsection{The modules}
 
 These are in memory once the system is up (\rp{info}{1} lists them):
@@ -409,13 +415,15 @@ These are in memory once the system is up (\rp{info}{1} lists them):
 \toprule
 \textbf{Modules} & \textbf{What they do}\\
 \midrule
-\file{REL Boot Krn} & Relocate the boot track, load \file{OS9Boot} from EmuDsk, and the kernel\\
+\file{REL Boot Krn} & Relocate the boot track, load \file{OS9Boot} from EmuDsk (or, for \cmd{l2fn}, the FujiNet), and the kernel\\
 \file{Init} & The system's settings: startup program, devices, table sizes\\
 \file{KrnP2 KrnP3} & The rest of the kernel, and its error-message extension\\
 \file{IOMan} & The I/O manager\\
 \file{Clock Clock2} & The 60~Hz tick, and the real-time clock (\file{clock2\_tfr911})\\
 \file{SCF sc6850 Term} & The terminal file manager, the 6850 driver, \file{/Term}\\
 \file{RBF EmuDsk DD H0} & The disk file manager, the EmuDsk driver, \file{/DD} and \file{/H0}\\
+\file{rbdw dwio X0}--\file{X3} & DriveWire disks on the FujiNet, and DriveWire's wire routines\\
+\file{scdwv N N1}--\file{N5} & DriveWire's network devices, through which the \cmd{fn} commands talk\\
 \file{PipeMan Piper Pipe} & Pipes\\
 \file{SysGo Shell} & The first process, and the Shell it starts\\
 \bottomrule
@@ -438,12 +446,16 @@ a \cmd{man} page on the board too: type \type{man} \var{name}.
 \rp{pwd}{1} & Print the data or execution directory\\
 \rp{clear}{1} & Clear the screen\\
 \rp{beep}{1}, \rp{click}{1} & Ring the bell; turn keyclicks on and off\\
+\rp{fujinet}{1} & The FujiNet's hosts, device slots, and status: \cmd{fnstatus}, \cmd{fnlistdevs}, \ldots\\
+\rp{fnconfig}{1} & FujiNet CONFIG\\
+\rp{fnweather}{1} & The weather where you are\\
+\rp{fujinet}{4} & The FujiNet: its wiring, its disks, and booting from it\\
 \rp{tfr911h}{4} & The hardware the firmware emulates\\
 \rp{sn76489}{4} & Programming the sound chip\\
 \rp{tetris}{6} & Tetris, with music\\
 \rp{zm}{6} & A Z-machine, for Zork and the other Infocom games\\
 \rp{tether}{8} & The program that is the board's terminal and disk\\
-\rp{tcl}{8} & The firmware's console: \cmd{l2}, \cmd{bye}, \cmd{beep}, \cmd{click}\\
+\rp{tcl}{8} & The firmware's console: \cmd{l2}, \cmd{l2fn}, \cmd{bye}, \cmd{fujinet}, \cmd{beep}, \cmd{click}\\
 \rp{nitros9-l2}{8} & Building the system and keeping a disk up to date\\
 \bottomrule
 \end{tabularx}
@@ -518,6 +530,9 @@ This section describes the commands added to NitrOS-9 Level~2 for the TFR/911H. 
 beep(1) & Ring the bell\\
 clear(1) & Clear the screen\\
 click(1) & Turn keyclicks on or off\\
+fnconfig(1) & FujiNet CONFIG: the FujiNet's status, hosts, device slots, and WiFi\\
+fnweather(1) & The weather where you are, through the FujiNet\\
+fujinet(1) & Commands for the FujiNet: \textmd{fnstatus, fnlisthosts, fnlistdevs, fnsetdevfile,} \ldots\\
 grep(1) & Print lines that contain a string\\
 info(1) & Show what the system and the hardware know about themselves\\
 pwd(1) & Print the data or execution directory\\
@@ -576,6 +591,119 @@ they were when it ends.
 \rh{See Also} \rp{beep}{1}, \rp{sn76489}{4}, \rp{tfr911h}{4}
 \end{refpage}
 
+\refentry{fnconfig}{1}{FujiNet CONFIG}
+\begin{refpage}
+\rh{Name} \cmd{fnconfig} -- FujiNet CONFIG for NitrOS-9
+\rh{Syntax} \cmd{fnconfig}
+\rh{Description}
+The \cmd{fnconfig} command is a full-screen program for managing the
+FujiNet, as the CONFIG program does on other computers. It has four
+pages, chosen with the number keys:
+
+\begin{keys}[0.85in]
+\key{1} Status & The FujiNet's firmware version, host name, WiFi network,
+and IP settings.\\
+\key{2} Hosts & The eight host slots. \key{Up} and \key{Down} pick one;
+\key{E} edits it, \key{M} mounts it, and \key{U} unmounts it.\\
+\key{3} Devices & The four DriveWire device slots, \file{/X0}--\file{/X3}.
+\key{B} browses the slot's host for an image, \key{E} edits the path,
+\key{M} mounts the image (it asks whether read-only or read/write), and
+\key{U} ejects it.\\
+\key{4} WiFi & \key{S} scans for networks; \key{E} enters a network's
+name. Either then asks for the password.\\
+\end{keys}
+
+On every page \key{R} reads everything from the FujiNet again, \key{I}
+shows the program's and the firmware's versions, \key{?} shows help, and
+\key{Q} quits. The FujiNet saves each change when it succeeds.
+\rh{Restrictions}
+When NitrOS-9 was booted from the FujiNet (\cmd{l2fn}), \file{/X0} is
+\file{/DD}: \cmd{fnconfig} will not change device slot~0 or its host, and
+asks before changing the WiFi, which may drop the connection the disk
+depends on.
+
+The screen must be at least 80 columns by 24 lines. \cmd{fnconfig} was
+written for a Color Computer~3's window; on the TFR/911H it is built to
+send ANSI escape sequences instead.
+\rh{See Also} \rp{fujinet}{1}, \rp{fujinet}{4}
+\end{refpage}
+
+\refentry{fnweather}{1}{the weather where you are}
+\begin{refpage}
+\rh{Name} \cmd{fnweather} -- the weather where you are, through the FujiNet
+\rh{Syntax} \cmd{fnweather}
+\rh{Description}
+The \cmd{fnweather} command finds where you are from your network's public
+address (from \texttt{ip-api.com}), then shows the weather there now (from
+Open-Meteo): the sky, the temperature and what it feels like, the
+humidity, the air pressure, and the wind. It uses Fahrenheit and miles in
+the United States, Liberia, and Myanmar, and Celsius and kilometres
+elsewhere. The FujiNet makes the HTTPS requests and picks the fields out
+of the JSON replies.
+
+\begin{keys}[0.5in]
+\key{R} & Fetch the weather again.\\
+\key{U} & Change between metric and imperial units.\\
+\key{L} & Find where you are again.\\
+\key{D} & Show the data as received, and the last error.\\
+\key{I}, \key{?} & Show the credits; show help.\\
+\key{Q} & Quit.\\
+\end{keys}
+\rh{Restrictions}
+Each request can take several seconds. \cmd{fnweather} shows today's
+conditions, not a forecast.
+\rh{See Also} \rp{fnconfig}{1}, \rp{fujinet}{4}
+\end{refpage}
+
+\refentry{fujinet}{1}{commands for the FujiNet}
+\begin{refpage}
+\rh{Name} \cmd{fnstatus}, \cmd{fnlisthosts}, \cmd{fngethost},
+\cmd{fnsethost}, \cmd{fnmount}, \cmd{fnlistdevs}, \cmd{fngetdevfile},
+\cmd{fnsetdevfile}, \cmd{fnmountimg} -- manage the FujiNet
+\rh{Syntax} \cmd{fnstatus}\\
+\cmd{fnlisthosts}\\
+\cmd{fngethost} \var{host\_slot}\\
+\cmd{fnsethost} \var{host\_slot} \var{host}\\
+\cmd{fnmount} \var{host\_slot}\\
+\cmd{fnlistdevs}\\
+\cmd{fngetdevfile} \var{device\_slot}\\
+\cmd{fnsetdevfile} \var{device\_slot} \var{host\_slot} \var{mode} \var{path}\\
+\cmd{fnmountimg} \var{device\_slot} [\var{mode}]
+\rh{Description}
+These commands talk to the FujiNet through \file{/N1}. A FujiNet has eight
+\emph{host slots}, each a place images come from: a TNFS server, or
+\texttt{SD} for its own SD card. It has four DriveWire \emph{device
+slots}, each an image from a host, which NitrOS-9 sees as the disks
+\file{/X0}--\file{/X3}. Slots are numbered from 0, as the FujiNet numbers
+them: device slot~0 is \file{/X0}. A \var{mode} is 1 for read-only or 2
+for read/write.
+
+\begin{keys}[1.05in]
+\cmd{fnstatus} & Print the FujiNet's firmware version, host name, WiFi
+network, IP address, gateway, netmask, and name server, and whether the
+WiFi is connected.\\
+\cmd{fnlisthosts} & List the host slots.\\
+\cmd{fngethost} & Print one host slot.\\
+\cmd{fnsethost} & Set one host slot, keeping the others.\\
+\cmd{fnmount} & Mount a host, so that its images can be used.\\
+\cmd{fnlistdevs} & List the device slots: each one's host slot, mode, and
+image.\\
+\cmd{fngetdevfile} & Print one device slot's image.\\
+\cmd{fnsetdevfile} & Put the image \var{path}, from host
+\var{host\_slot}, in a device slot. The FujiNet saves it.\\
+\cmd{fnmountimg} & Mount a device slot's image (read-only, unless
+\var{mode} is 2).\\
+\end{keys}
+\rh{Examples}
+Use an image on the FujiNet's SD card (host slot~1) as \file{/X1}:
+\begin{ex}
+OS9: \textbf{fnsetdevfile 1 1 2 /games/disk.dsk}
+OS9: \textbf{fnmountimg 1 2}
+OS9: \textbf{dir /x1}
+\end{ex}
+\rh{See Also} \rp{fnconfig}{1}, \rp{fujinet}{4}
+\end{refpage}
+
 \refentry{grep}{1}{print lines that contain a string}
 \begin{refpage}
 \rh{Name} \cmd{grep} -- print lines that contain a string
@@ -631,8 +759,8 @@ and device each belongs to.\\
 \sans{Modules} & The names of the modules in memory, and their total size.\\
 \sans{Hardware} & The TFR/911H firmware's own report: the board, the
 firmware's build date, the RP2350B's clock, memory and ID, the 6309's
-measured speed and how busy it is, the interrupt rate, the disk, console
-and sound counters, whether the clock was set, and the uptime.\\
+measured speed and how busy it is, the interrupt rate, the disk, console,
+sound, and FujiNet counters, whether the clock was set, and the uptime.\\
 \end{keys}
 
 The kernel's tables are in the system's own address space. \cmd{info}
@@ -937,11 +1065,98 @@ This section describes the hardware the TFR/911H firmware presents to NitrOS-9: 
 \toprule
 \textnormal{\textbf{Name}} & \textbf{Description}\\
 \midrule
+fujinet(4) & The FujiNet: its wiring, the becker port, its disks, and booting from it\\
 sn76489(4) & The sound chip\\
 tfr911h(4) & The hardware the firmware emulates: memory, interrupts, console, disk, clock, keyboard\\
 \bottomrule
 \end{tabularx}
 
+
+\refentry{fujinet}{4}{the FujiNet}
+\begin{refpage}
+\rh{Name} \cmd{fujinet} -- the FujiNet, its disks, and booting from it
+\rh{Description}
+A FujiNet is a network adapter for old computers: an ESP32 with WiFi and
+an SD card. On the TFR/911H it runs the FujiNet firmware for the Color
+Computer, built for the board \texttt{fujinet-coco-devkitc-centipede},
+which speaks DriveWire over a 3.3-volt serial link at 921{,}600 baud. It is
+wired as the Centipede's FujiNet hat is:
+
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{RP2350B} & \textbf{ESP32} & \textbf{Signal}\\
+\midrule
+GPIO~12 & GPIO~33 & Data to the FujiNet (UART0 TX to UART1 RX)\\
+GPIO~13 & GPIO~21 & Data from the FujiNet (UART1 TX to UART0 RX)\\
+GND & GND & \\
+\bottomrule
+\end{tabularx}
+
+\sans{\textbf{The becker port}}\quad The firmware passes the link to the
+6309 as a becker port, the kind CoCo emulators give DriveWire:
+
+\begin{keys}[1.05in]
+\file{\$FF45} & Read: bit~1 is set when a byte from the FujiNet is
+waiting.\\
+\file{\$FF46} & Read: the next byte from the FujiNet. Write: a byte to
+the FujiNet.\\
+\end{keys}
+Emulators have the becker port at \file{\$FF41}, where the TFR/911H has its
+sound chip, so NitrOS-9's DriveWire modules are built with
+\texttt{BECKBASE} set to \file{\$FF45}. The firmware keeps 4K of what the
+FujiNet sends, so nothing is lost while the 6309 is busy.
+
+\sans{\textbf{Devices}}\quad \file{/X0}--\file{/X3} are the FujiNet's four
+device slots, as DriveWire disks (\file{rbdw}). \file{/N} and
+\file{/N1}--\file{/N5} are DriveWire's network devices (\file{scdwv}); the
+\rp{fujinet}{1} commands use \file{/N1}, and its \texttt{SS.Fuji} SetStat,
+which sends a request to the FujiNet and reads its reply with interrupts
+masked. There is no virtual-serial poller, which would take the
+FujiNet's replies for itself.
+
+\sans{\textbf{Booting from the FujiNet}}\quad At the \texttt{TCL>} prompt,
+\cmd{l2fn} mounts the image in the FujiNet's first device slot (slot~0),
+and boots NitrOS-9 from it: the kernel is in the firmware, as for \cmd{l2},
+and its \file{Boot} module loads \file{OS9Boot} from DriveWire drive~0.
+That \file{OS9Boot} makes \file{/X0} the system disk, \file{/DD}; the
+tether's disk is \file{/H0}. To make such a disk, put it on the FujiNet,
+and boot it:
+\begin{ex}
+$ \textbf{cd v4/nitros9-l2}
+$ \textbf{make fujinet-disk}
+$ \textbf{curl -X MKCOL http://\var{fujinet}/dav/tfr911}
+$ \textbf{curl -T level2-fn.dsk http://\var{fujinet}/dav/tfr911/level2-fn.dsk}
+\end{ex}
+Then, with NitrOS-9 booted with \cmd{l2}, put the image in device slot~0
+(host slot~1 being the SD card), and boot it:
+\begin{ex}
+OS9: \textbf{fnsetdevfile 0 1 2 /tfr911/level2-fn.dsk}
+\end{ex}
+\begin{ex}
+$ \textbf{BOOT=l2fn sh run-l2.sh}
+\end{ex}
+\cmd{make fujinet-disk} copies \file{level2.dsk}, with your files, to
+\file{level2-fn.dsk}, and gives the copy the FujiNet's \file{OS9Boot}.
+The FujiNet's web server offers its SD card by WebDAV at \file{/dav}.
+\rh{Restrictions}
+At power on, the FujiNet puts its own CONFIG disk in device slot~0; that
+is why \cmd{l2fn} mounts the slot first.
+
+The FujiNet keeps the image file open. After replacing the file, mount it
+again (\cmd{l2fn} does, as does \texttt{fujinet mount 1} at
+\texttt{TCL>}).
+
+The FujiNet's firmware must read the version byte that NitrOS-9 sends after
+\texttt{OP\_DWINIT}; firmware that does not loses the command after it, and
+the 6309 waits for ever. See \file{v4/nitros9-l2/fujinet/README.md}.
+\rh{Files}
+\begin{keys}[2.3in]
+\file{v4/tfr911h/v4\_fujinet.h} & The becker port and the link.\\
+\file{v4/nitros9-l2/fujinet/} & The DriveWire modules, the \cmd{fn}
+commands and their libraries, and how to set up the FujiNet.\\
+\end{keys}
+\rh{See Also} \rp{fnconfig}{1}, \rp{fujinet}{1}, \rp{tfr911h}{4}, \rp{tcl}{8}
+\end{refpage}
 
 \refentry{sn76489}{4}{the sound chip}
 \begin{refpage}
@@ -1045,6 +1260,9 @@ computer's local time when it connects, and the firmware keeps it going.
 
 \sans{\textbf{Sound}}\quad \file{\$FF41} and \file{\$FF42}; see \rp{sn76489}{4}.
 
+\sans{\textbf{FujiNet}}\quad A becker port at \file{\$FF45} (status) and
+\file{\$FF46} (data), for DriveWire to a FujiNet; see \rp{fujinet}{4}.
+
 \sans{\textbf{Info port}}\quad The firmware's report on itself, for
 \rp{info}{1}. Write \file{\$A5} to \file{\$FF43}; when \file{\$FF43} reads
 1, each read of \file{\$FF44} gives the report's next character, and 0
@@ -1072,8 +1290,9 @@ Page Down & --- & 133 & Dropped, as CoCo code\\
 \begin{keys}[2.2in]
 \file{v4/tfr911h/v4\_nitros9\_l2.h} & The emulation.\\
 \file{v4/tfr911h/v4\_audio.h} & The sound chip and the mixer.\\
+\file{v4/tfr911h/v4\_fujinet.h} & The becker port.\\
 \end{keys}
-\rh{See Also} \rp{info}{1}, \rp{sn76489}{4}, \rp{tether}{8}
+\rh{See Also} \rp{info}{1}, \rp{fujinet}{4}, \rp{sn76489}{4}, \rp{tether}{8}
 \end{refpage}
 
 % ─────────────────────────────────────────────────────────────────── 6
@@ -1220,7 +1439,7 @@ tether(8) & The board's terminal, disk, and clock\\
 \rh{Description}
 The \file{v4/nitros9-l2} directory builds NitrOS-9 Level 2 for the TFR/911H
 from a NitrOS-9 source tree, with the commands described in this manual,
-and makes a disk image. It needs \cmd{lwasm} from LWTOOLS, \cmd{os9} from
+and makes a disk image, and another that boots from a FujiNet. It needs \cmd{lwasm} from LWTOOLS, \cmd{os9} from
 ToolShed, \cmd{tclsh}, \cmd{python3}, and, for the C programs, CMOC.
 
 \begin{keys}[1.35in]
@@ -1232,6 +1451,9 @@ track, \file{../tfr911h/nitros9\_l2\_rom.h}.\\
 \file{CMDS} and \file{SYS}. Other files are left alone.\\
 \texttt{make stories} & Copy the story files named by \var{STORIES} to
 \file{/DD/GAMES} on \var{DISK}.\\
+\texttt{make fujinet-disk} & Copy \var{DISK} to \var{FNDISK} (default
+\file{level2-fn.dsk}), with the \file{OS9Boot} that boots from the
+FujiNet; see \rp{fujinet}{4}.\\
 \texttt{make build/zm-host} & Build \cmd{zm} for this computer, for
 testing; also \texttt{build/vi-host}.\\
 \texttt{make clean} & Remove the build.\\
@@ -1255,6 +1477,7 @@ $ \textbf{make stories STORIES="~/if/zork1.z3 ~/if/hhgg.z3" DISK=level2.dsk}
 \file{rmake-l2.tcl} & Which modules go in \file{OS9Boot} and on the disk.\\
 \file{unix.tcl} & The Unix-style aliases, and changes to the Shell and \cmd{grep}.\\
 \file{modules/} & The TFR/911H's own modules: the clock, \cmd{clear}, \cmd{beep}, \cmd{click}.\\
+\file{fujinet/} & The DriveWire modules and the \cmd{fn} commands.\\
 \file{games/} & The C programs: \cmd{tetris}, \cmd{zm}, \cmd{vi}, \cmd{info}.\\
 \file{helpmsg.unix} & The \cmd{man} pages for what was added.\\
 \file{doc/manual.tex} & This manual.\\
@@ -1273,6 +1496,13 @@ has these commands:
 
 \begin{keys}[1.3in]
 \cmd{l2} & Boot NitrOS-9 Level 2 from EmuDsk drive~0.\\
+\cmd{l2fn} [\texttt{-n}] & Mount the image in the FujiNet's device slot~0
+and boot NitrOS-9 Level 2 from it; with \texttt{-n}, boot from whatever
+is mounted. See \rp{fujinet}{4}.\\
+\cmd{fujinet} & Ask the FujiNet the time, to show that the link works.\\
+\cmd{fujinet mount} [\var{n}] & Mount the image in the FujiNet's device
+slot \var{n} (1--4, the FujiNet's own numbers; default 1).\\
+\cmd{fujinet stats} & The link's byte and error counts.\\
 \cmd{bye} & Boot TurbOS, the OS-9 Level 1 system in the firmware.\\
 \cmd{beep} [\var{hz} [\var{ms}]] & Play a tone through the speaker
 (default 880~Hz for 200~ms), to test the wiring.\\
@@ -1281,9 +1511,11 @@ has these commands:
 \rh{Examples}
 \begin{ex}
 TCL> \textbf{beep 440 1000}
+TCL> \textbf{fujinet}
+FujiNet says it is 2026-10-17 18:46:20
 TCL> \textbf{l2}
 \end{ex}
-\rh{See Also} \rp{click}{1}, \rp{tether}{8}
+\rh{See Also} \rp{click}{1}, \rp{fujinet}{4}, \rp{tether}{8}
 \end{refpage}
 
 \refentry{tether}{8}{the board's terminal, disk, and clock}
@@ -1307,6 +1539,8 @@ simply reconnects.
 \file{/dev/cu.usbmodem*} device, if there is just one.\\
 \texttt{DISK} & The disk image for drive~0. The default,
 \file{nitros9-l2/level2.dsk}, is copied from the build the first time.\\
+\texttt{BOOT} & What to type at \texttt{TCL>}: \texttt{l2} (the default),
+or \texttt{l2fn} to boot from the FujiNet.\\
 \end{keys}
 \rh{Options}
 \begin{keys}[1.25in]

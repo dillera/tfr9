@@ -19,13 +19,16 @@ LWAR ?= lwar
 # Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html).
 CMOC ?= cmoc
 GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/info)
+# The FujiNet commands (see fujinet/README.md).
+FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
 OBJ_FLAGS = --6309 --format=obj --no-warn=ifp1 \
   --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export
 
-all: build/tfr911-level2.dsk ../tfr911h/nitros9_l2_rom.h
+all: build/tfr911-level2.dsk build/tfr911-level2-fn.dsk \
+  ../tfr911h/nitros9_l2_rom.h ../tfr911h/nitros9_l2fn_rom.h
 
 $B/Makefile: rmake-l2.tcl unix.tcl
 	tclsh rmake-l2.tcl
@@ -33,14 +36,15 @@ $B/Makefile: rmake-l2.tcl unix.tcl
 $B/tfr911-level2.dsk: $B/Makefile FORCE
 	rm -f $B/tfr911-level2.dsk
 	$(MAKE) -C $B
+$B/tfr911-level2-fn.t35 $B/tfr911-level2-fn.o9b: $B/tfr911-level2.dsk
 
-build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $(GAMES)
+build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $(GAMES) $(FN_CMDS)
 	cp -f $< $@
 	$(OS9_TOOL) copy -l -r startup $@,startup
 	$(OS9_TOOL) attr -q -r -w -pr $@,startup
 	$(OS9_TOOL) copy -r build/grep $@,CMDS/grep
 	$(OS9_TOOL) attr -q -r -w -e -pr -pe $@,CMDS/grep
-	for g in $(GAMES); do \
+	for g in $(GAMES) $(FN_CMDS); do \
 	  $(OS9_TOOL) copy -r $$g $@,CMDS/$$(basename $$g) && \
 	  $(OS9_TOOL) attr -q -r -w -e -pr -pe $@,CMDS/$$(basename $$g) || exit 1; \
 	done
@@ -56,17 +60,40 @@ build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $
 	  done; \
 	fi
 
-# grep is linked with NitrOS-9's alib, built here from its sources.
-build/grep: $B/Makefile  # rmake-l2.tcl writes build/local/grep.as
+# grep and the fn* commands are linked with NitrOS-9's alib, built here
+# from its sources.
+build/alib.a:
 	mkdir -p build/alib
 	for f in $(NITROS9_DIR)/lib/alib/*.as; do \
 	  $(LWASM) $(OBJ_FLAGS) -I$(NITROS9_DIR)/defs -I$(NITROS9_DIR)/lib/alib \
 	    -o build/alib/$$(basename $$f .as).o $$f || exit 1; \
 	done
-	rm -f build/alib.a && $(LWAR) -c build/alib.a build/alib/*.o
-	$(LWASM) $(OBJ_FLAGS) -I$(NITROS9_DIR)/defs -o build/sys.o $(NITROS9_DIR)/lib/sys6809l2.as
+	rm -f $@ && $(LWAR) -c $@ build/alib/*.o
+
+build/sys.o: fujinet/lib/sys6809l2.as fujinet/defs/drivewire.d
+	mkdir -p build
+	$(LWASM) $(OBJ_FLAGS) -Ifujinet/defs -I$(NITROS9_DIR)/defs -o $@ $<
+
+build/grep: $B/Makefile build/sys.o build/alib.a  # rmake-l2.tcl writes build/local/grep.as
 	$(LWASM) $(OBJ_FLAGS) -I$(NITROS9_DIR)/defs -o build/grep.o build/local/grep.as
 	cd build && $(LWLINK) --format=os9 -o grep grep.o sys.o alib.a  # module name = output name
+
+# The FujiNet commands, each linked with the FujiNet libraries.
+# (No nosymbolcase here: fnweather and fnconfig have labels that differ
+# only in case, as in NitrOS-9's own rules for linked commands.)
+# ANSI=1: fnconfig and fnweather draw with ANSI sequences, for the
+# tether's terminal, instead of CoCo 3 window codes (fujinet/lib/fnansi.as).
+FN_FLAGS = $(subst nosymbolcase$(COMMA),,$(OBJ_FLAGS)) -DANSI=1 \
+  -Ifujinet/lib -Ifujinet/defs -I$(NITROS9_DIR)/defs
+COMMA = ,
+build/fn/%.o: fujinet/lib/%.as fujinet/defs/drivewire.d
+	mkdir -p build/fn
+	$(LWASM) $(FN_FLAGS) -o $@ $<
+build/fn/%.o: fujinet/cmds/%.as fujinet/defs/drivewire.d fujinet/lib/fnansi.as
+	mkdir -p build/fn
+	$(LWASM) $(FN_FLAGS) -o $@ $<
+build/fn/%: build/fn/%.o build/fn/fnnet.o build/fn/fuji.o build/sys.o build/alib.a
+	cd build/fn && $(LWLINK) --format=os9 -o $* $*.o fnnet.o fuji.o ../sys.o ../alib.a
 
 build/tetris: games/tetris.c
 	mkdir -p build
@@ -106,13 +133,24 @@ build/launcher.raw: launcher.asm
 ../tfr911h/nitros9_l2_rom.h: build/launcher.raw $B/tfr911-level2.dsk
 	python3 gen-rom-header.py build/launcher.raw $B/tfr911-level2.t35 > $@
 
+../tfr911h/nitros9_l2fn_rom.h: build/launcher.raw $B/tfr911-level2-fn.t35
+	python3 gen-rom-header.py build/launcher.raw $B/tfr911-level2-fn.t35 > $@
+
+# The same disk, but booting from the FujiNet: its OS9Boot finds /DD on
+# DriveWire drive 0 (/X0).  Put it where the FujiNet can mount it in disk
+# slot 1 (its SD card, or a TNFS server), then type  l2fn  at TCL>.
+build/tfr911-level2-fn.dsk: build/tfr911-level2.dsk $B/tfr911-level2-fn.o9b $B/tfr911-level2-fn.t35
+	cp -f $< $@
+	$(OS9_TOOL) gen -t'$B/tfr911-level2-fn.t35' -b'$B/tfr911-level2-fn.o9b' $@
+
 # Update an existing disk (default: the one run-l2.sh uses) to this build:
 # new OS9Boot, and every file in CMDS and SYS.  Other files are left alone.
 # Quit the tether and press RESET on the board first.
 DISK ?= level2.dsk
 NEW = build/tfr911-level2.dsk
+BOOTFILE ?= $B/tfr911-level2.o9b
 install: $(NEW)
-	$(OS9_TOOL) gen -b=$B/tfr911-level2.o9b $(DISK)
+	$(OS9_TOOL) gen -b=$(BOOTFILE) $(DISK)
 	for d in CMDS SYS; do \
 	  $(OS9_TOOL) makdir $(DISK),$$d 2>/dev/null; \
 	  for f in $$($(OS9_TOOL) dir $(NEW),$$d | awk 'NR > 2'); do \
@@ -122,6 +160,14 @@ install: $(NEW)
 	  done; \
 	done
 	@echo "Updated $(DISK).  Press RESET on the board to boot the new OS9Boot."
+
+# A copy of DISK (your files and all) that boots from the FujiNet:
+#   make fujinet-disk [DISK=level2.dsk] [FNDISK=level2-fn.dsk]
+# Then put FNDISK in the FujiNet's device slot 1 (see fujinet/README.md).
+FNDISK ?= level2-fn.dsk
+fujinet-disk: $(NEW) $B/tfr911-level2-fn.o9b
+	cp -f $(DISK) $(FNDISK)
+	$(MAKE) install DISK=$(FNDISK) BOOTFILE=$B/tfr911-level2-fn.o9b
 
 # Copy story files to /DD/GAMES on a disk:  make stories STORIES="..." DISK=...
 stories:
@@ -146,4 +192,4 @@ clean:
 	rm -rf build
 
 FORCE:
-.PHONY: all clean install stories manual FORCE
+.PHONY: all clean install fujinet-disk stories manual FORCE
