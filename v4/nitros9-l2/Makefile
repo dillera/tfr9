@@ -18,7 +18,9 @@ LWLINK ?= lwlink
 LWAR ?= lwar
 # Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html).
 CMOC ?= cmoc
-GAMES = $(if $(shell command -v $(CMOC)),build/tetris)
+GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm)
+# Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
+STORIES ?=
 
 OBJ_FLAGS = --6309 --format=obj --no-warn=ifp1 \
   --pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax,export
@@ -43,6 +45,7 @@ build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $
 	  $(OS9_TOOL) attr -q -r -w -e -pr -pe $@,CMDS/$$(basename $$g) || exit 1; \
 	done
 	@test -n "$(GAMES)" || echo "NOTE: $(CMOC) not found, so no games on the disk."
+	$(if $(STORIES),$(MAKE) stories DISK=$@)
 	$(OS9_TOOL) makdir $@,SYS
 	$(OS9_TOOL) copy -l -r $(NITROS9_DIR)/level1/sys/errmsg $@,SYS/errmsg
 	$(OS9_TOOL) copy -l -r build/helpmsg $@,SYS/helpmsg
@@ -68,6 +71,15 @@ build/grep: $B/Makefile  # rmake-l2.tcl writes build/local/grep.as
 build/tetris: games/tetris.c
 	mkdir -p build
 	cd build && $(CMOC) --os9 --add-os9-stack-space=2048 -o tetris ../games/tetris.c  # module name = output name
+
+build/zm: games/zm.c
+	mkdir -p build
+	cd build && $(CMOC) --os9 --function-stack=0 --add-os9-stack-space=2048 -o zm ../games/zm.c
+
+# zm for this computer, for testing:  build/zm-host -d story.z3
+build/zm-host: games/zm.c
+	mkdir -p build
+	$(CC) -O2 -Wall -o $@ games/zm.c
 
 # NitrOS-9's help text, plus the Unix-style commands.
 build/helpmsg: helpmsg.unix
@@ -98,8 +110,18 @@ install: $(NEW)
 	done
 	@echo "Updated $(DISK).  Press RESET on the board to boot the new OS9Boot."
 
+# Copy story files to /DD/GAMES on a disk:  make stories STORIES="..." DISK=...
+stories:
+	@test -n "$(STORIES)" || { echo 'Say which: make stories STORIES="zork1.z3 ..."'; exit 1; }
+	$(OS9_TOOL) makdir $(DISK),GAMES 2>/dev/null || true
+	for f in $(STORIES); do \
+	  $(OS9_TOOL) copy -r $$f $(DISK),GAMES/$$(basename $$f) || exit 1; \
+	  $(OS9_TOOL) attr -q -r -w -pr $(DISK),GAMES/$$(basename $$f); \
+	done
+	$(OS9_TOOL) dir $(DISK),GAMES
+
 clean:
 	rm -rf build
 
 FORCE:
-.PHONY: all clean install FORCE
+.PHONY: all clean install stories FORCE

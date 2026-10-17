@@ -71,6 +71,25 @@ make install DISK=level2.dsk OS9_TOOL=...   # then press RESET on the board
 Arrow keys reach OS-9 as a CoCo 3 sends them: left `$08`, right `$09`,
 up `$0C`, down `$0A` (so left arrow is also backspace at the Shell).
 
+* `zm`: a Z-machine, for Infocom's version 3 games (Zork I-III,
+  Hitchhiker's Guide, Planetfall, Enchanter, Deadline, ...) and Inform
+  games compiled with `-v3`.  `zm zork1` looks for `zork1` or `zork1.z3`
+  here and then in `/DD/GAMES`; `man zm` lists its options.  It has a status
+  line, word wrap and `[MORE]` for an 80x24 terminal (`-w`, `-h` for others),
+  and `save` and `restore` write files in the current data directory.
+  Dynamic memory stays in RAM, and as much of the rest of the story as fits
+  (about 40K); the rest is read from disk in 512-byte pages as needed.
+
+  To put story files on a disk, quit the tether, then
+  `make stories STORIES="zork1.z3 ..." DISK=level2.dsk`.  Zork I-III are
+  MIT-licensed now, compiled in `historicalsource/zork1` (and `zork2`,
+  `zork3`) on GitHub, under `COMPILED/`.
+
+  `make build/zm-host` builds `zm` for this computer, for testing:
+  `build/zm-host -d story.z3 < commands` plays without escape sequences,
+  and its output can be compared with `dfrotz`'s.  It passes all of CZECH's
+  v3 tests.
+
 `tetris` has sound if a speaker is connected (see below): the Tetris theme
 (`m` turns it off and on), and effects for moves, landings, line clears and
 game over.
