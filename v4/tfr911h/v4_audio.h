@@ -12,7 +12,8 @@
 //   * an SN76489 sound chip (3 square-wave tones + noise, 16 volume steps)
 //     written at $FF41, where the CoCo's Game Master Cartridge has one;
 //   * keyclicks, the terminal bell (BEL, $07), and Tcl's `beep`.
-// $FF42 is a control register: bit 0 enables keyclicks, bit 1 the bell.
+// $FF42 is a control register: bit 0 enables keyclicks, bit 1 the bell;
+// bit 7 passes arrow keys to OS-9 untranslated (see DeliverKeystroke).
 //
 // The bus loop (core 1) only queues chip writes and sets request flags;
 // all synthesis state belongs to the interrupt.
@@ -37,7 +38,7 @@ constexpr uint32_t STEP =
 const byte Amp[16] = {30, 24, 19, 15, 12, 9, 8, 6, 5, 4, 3, 2, 2, 1, 1, 0};
 
 // ── Shared with core 1 and the rest of core 0 ──
-volatile byte control = 3;           // $FF42: bit 0 keyclick, bit 1 bell
+volatile byte control = 3;           // $FF42: bit 0 keyclick, bit 1 bell, bit 7 raw arrows
 volatile byte fifo[256];             // SN76489 writes from the bus loop
 volatile byte fifo_head;             // written by core 1
 volatile byte fifo_tail;             // written by the interrupt

@@ -18,7 +18,7 @@ LWLINK ?= lwlink
 LWAR ?= lwar
 # Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html).
 CMOC ?= cmoc
-GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm)
+GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -27,7 +27,7 @@ OBJ_FLAGS = --6309 --format=obj --no-warn=ifp1 \
 
 all: build/tfr911-level2.dsk ../tfr911h/nitros9_l2_rom.h
 
-$B/Makefile: rmake-l2.tcl
+$B/Makefile: rmake-l2.tcl unix.tcl
 	tclsh rmake-l2.tcl
 
 $B/tfr911-level2.dsk: $B/Makefile FORCE
@@ -75,6 +75,15 @@ build/tetris: games/tetris.c
 build/zm: games/zm.c
 	mkdir -p build
 	cd build && $(CMOC) --os9 --function-stack=0 --add-os9-stack-space=2048 -o zm ../games/zm.c
+
+build/vi: games/vi.c
+	mkdir -p build
+	cd build && $(CMOC) --os9 --function-stack=0 --add-os9-stack-space=1024 -o vi ../games/vi.c
+
+# vi for this computer, for testing
+build/vi-host: games/vi.c
+	mkdir -p build
+	$(CC) -O2 -o $@ games/vi.c
 
 # zm for this computer, for testing:  build/zm-host -d story.z3
 build/zm-host: games/zm.c

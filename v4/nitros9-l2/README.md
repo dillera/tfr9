@@ -69,7 +69,19 @@ make install DISK=level2.dsk OS9_TOOL=...   # then press RESET on the board
   path to `/term` for raw keys, so the Shell's terminal settings are untouched.
 
 Arrow keys reach OS-9 as a CoCo 3 sends them: left `$08`, right `$09`,
-up `$0C`, down `$0A` (so left arrow is also backspace at the Shell).
+up `$0C`, down `$0A` (so left arrow is also backspace at the Shell),
+except while a program has set bit 7 of `$FF42` (see Sound).
+
+* `vi` (or `vim`): a small vi, with most of the normal-mode commands
+  people use without thinking (motions, `d`/`c`/`y` with any motion,
+  counts, `p`, `u` with any number of levels, `.`, `/` and `?`),
+  insert mode with working arrow keys, and `:w :q :wq :x :e :r :N` and
+  `:[range]s/old/new/[g]`.  `man vi` lists it all.  Searches are plain
+  text, not patterns.  Files are written with OS-9's CR line ends; files
+  with LF or CR LF ends are read too.  It holds about 25K of text.
+
+  `make build/vi-host` builds it for this computer.  Typed the same keys,
+  it leaves the same file as Vim does for 120-odd editing commands.
 
 * `zm`: a Z-machine, for Infocom's version 3 games (Zork I-III,
   Hitchhiker's Guide, Planetfall, Enchanter, Deadline, ...) and Inform
@@ -122,6 +134,9 @@ In NitrOS-9:
 * An SN76489 sound chip (three tones and a noise channel, as in the Game
   Master Cartridge) is at `$FF41`; `tetris` plays through it.
 * `$FF42` is a control register: bit 0 enables keyclicks, bit 1 the bell.
+  Bit 7 (set by `vi`) sends arrow and page keys to OS-9 as the tether's
+  codes 128-133, instead of the CoCo's codes, where left and right are
+  the same as Backspace and Tab.
 
 ## What the firmware emulates
 
@@ -137,7 +152,7 @@ the same way v3 ran Level 2 on the TFR/905H:
 | EmuDsk | `$FF80`-`$FF86` | virtual hard disk, sectors moved over USB by the tether |
 | RTC | `$FFC0`-`$FFC7` | the PC's local time, sent by the tether (`clock2_tfr911`) |
 | SN76489 | `$FF41` | write-only sound chip (see Sound) |
-| Sound control | `$FF42` | bit 0 keyclicks, bit 1 bell |
+| Sound control | `$FF42` | bit 0 keyclicks, bit 1 bell, bit 7 raw arrow keys |
 
 Other `$FFxx` locations read back what was last written.
 The 6309 runs in 6809 mode.

@@ -320,11 +320,17 @@ void DeliverKeystroke() {
   while (!rx_full && term_input.NumBuffered() > 0) {
     byte ch = term_input.Take();
     if (ch >= 128) {
-      // The tether sends arrow keys as 128..131 (Up, Down, Left, Right) for
-      // the TCL editor.  Give OS-9 what a CoCo 3 keyboard sends for them.
+      // The tether sends arrow keys as 128..131 (Up, Down, Left, Right) and
+      // Page Up/Down as 132, 133, for the TCL editor.  Give OS-9 what a
+      // CoCo 3 keyboard sends for them, unless a program (vi) has set bit 7
+      // of $FF42 to get them as they are: left and right would otherwise be
+      // the same as Backspace and Tab.
       static const byte arrows[4] = {0x0C, 0x0A, 0x08, 0x09};
-      if (ch > 131) continue;  // Page Up/Down: nothing on a CoCo
-      ch = arrows[ch - 128];
+      if (ch > 133) continue;
+      if (!(audio::control & 0x80)) {
+        if (ch > 131) continue;  // Page Up/Down: nothing on a CoCo
+        ch = arrows[ch - 128];
+      }
     }
     rx_char = ch;
     __dmb();

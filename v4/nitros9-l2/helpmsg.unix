@@ -1,7 +1,7 @@
 @UNIX
 Unix-style commands on the TFR/911H (try "man <name>"):
   ls ll cat cp mv rm mkdir rmdir pwd cd ps df less man
-  grep clear uname exit     and: tetris zm beep click
+  grep clear uname exit vi vim   and: tetris zm beep click
 Most are aliases that run the OS-9 command shown by "man".
 OS-9 paths use / like Unix; /DD is the disk, . and .. work.
 Differences: pipes are "!" not "|"; ">>" redirects errors (there is no
@@ -67,6 +67,20 @@ Usage : Leave this shell.
 Syntax: tetris
 Usage : Play Tetris.  Arrows or a/d move, up or w rotates, down or s drops
         a row, space drops the piece, p pauses, q quits, m toggles music.
+@VI
+Syntax: vi [-w <cols>] [-h <rows>] [<file>]
+Usage : A small vi.  ESC returns to normal mode.  Normal mode:
+        move   h j k l arrows w b e W B E 0 ^ $ G gg H M L f t F T ; , %
+               { } ^F ^B ^D ^U PgUp PgDn, /text ?text n N *
+        insert i a I A o O     change x X D C s S r J ~ p P >> << u .
+        d c y > < + motion (dw c$ y3j dG d/text), dd cc yy, counts
+        ZZ saves and quits, ^G shows the file, ^L redraws.
+        :w [file] :q :q! :wq :x :e[!] [file] :r file :N :$
+        :[range]s/old/new/[g] :[range]d   (range: N  .  $  %  N,M)
+        Searches are plain text.  Files are written with CR line ends.
+@VIM
+Syntax: vim [<file>]         (runs: vi)
+Usage : The same as vi.
 @ZM
 Syntax: zm [-w <cols>] [-h <rows>] [-m <kbytes>] [-d] <story>
 Usage : Play an Infocom (or Inform) version 3 story file, such as

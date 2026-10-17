@@ -22,6 +22,7 @@ set UNIX_ALIASES {
     less    more     {}         {}
     man     help     {}         {}
     uname   echo     {NitrOS-9 Level 2 on the TFR/911H} {}
+    vim     vi       {}         {}
 }
 
 # Real commands, in rmake's "-cmds" syntax.
