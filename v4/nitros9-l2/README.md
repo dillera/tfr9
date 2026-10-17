@@ -71,9 +71,38 @@ make install DISK=level2.dsk OS9_TOOL=...   # then press RESET on the board
 Arrow keys reach OS-9 as a CoCo 3 sends them: left `$08`, right `$09`,
 up `$0C`, down `$0A` (so left arrow is also backspace at the Shell).
 
+`tetris` has sound if a speaker is connected (see below): the Tetris theme
+(`m` turns it off and on), and effects for moves, landings, line clears and
+game over.
+
 Two CMOC-on-OS-9 lessons: give programs `--add-os9-stack-space=2048` (the
 default stack is too small even for printf), and don't write
 `flag ? byteval : -1` (CMOC gives it the byte's type, so -1 becomes 255).
+
+## Sound
+
+`../tfr911h/v4_audio.h` makes sound as PWM on GPIO 8, which is
+pin 1 of the 2x10 header J3 and is not connected to the CPU.  An Adafruit
+PAM8302 amplifier drives a small speaker from it:
+
+| J3 pin | Signal | PAM8302 |
+|---|---|---|
+| 2 | VBUS (5 V) | Vin |
+| 6 | GND | GND and A- |
+| 1 | GPIO 8 | A+, through 1 kOhm, with 10 nF from A+ to GND |
+
+The speaker goes on the PAM8302's + and - terminals.  Start with its volume
+pot turned down.  At the `TCL>` prompt, `beep 440 1000` plays an A for one
+second (`beep ?hz? ?ms?`), and `click off` / `click on` turn off and on
+the keyclicks.
+
+In NitrOS-9:
+
+* Every key typed clicks.  `click off` and `click on` turn this off and on.
+* The terminal bell (`$07`, as `beep` sends) beeps.
+* An SN76489 sound chip (three tones and a noise channel, as in the Game
+  Master Cartridge) is at `$FF41`; `tetris` plays through it.
+* `$FF42` is a control register: bit 0 enables keyclicks, bit 1 the bell.
 
 ## What the firmware emulates
 
@@ -88,6 +117,8 @@ the same way v3 ran Level 2 on the TFR/905H:
 | MC6850 ACIA | `$FF14`-`$FF15` | the console, `/Term` |
 | EmuDsk | `$FF80`-`$FF86` | virtual hard disk, sectors moved over USB by the tether |
 | RTC | `$FFC0`-`$FFC7` | the PC's local time, sent by the tether (`clock2_tfr911`) |
+| SN76489 | `$FF41` | write-only sound chip (see Sound) |
+| Sound control | `$FF42` | bit 0 keyclicks, bit 1 bell |
 
 Other `$FFxx` locations read back what was last written.
 The 6309 runs in 6809 mode.

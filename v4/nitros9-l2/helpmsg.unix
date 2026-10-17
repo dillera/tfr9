@@ -1,7 +1,7 @@
 @UNIX
 Unix-style commands on the TFR/911H (try "man <name>"):
   ls ll cat cp mv rm mkdir rmdir pwd cd ps df less man
-  grep clear uname exit     and: tetris
+  grep clear uname exit     and: tetris beep click
 Most are aliases that run the OS-9 command shown by "man".
 OS-9 paths use / like Unix; /DD is the disk, . and .. work.
 Differences: pipes are "!" not "|"; ">>" redirects errors (there is no
@@ -66,4 +66,10 @@ Usage : Leave this shell.
 @TETRIS
 Syntax: tetris
 Usage : Play Tetris.  Arrows or a/d move, up or w rotates, down or s drops
-        a row, space drops the piece, p pauses, q quits.
+        a row, space drops the piece, p pauses, q quits, m toggles music.
+@BEEP
+Syntax: beep
+Usage : Ring the bell: the terminal's, and the TFR/911H's speaker.
+@CLICK
+Syntax: click on|off
+Usage : Turn the TFR/911H's keyclicks on or off.

@@ -4,7 +4,13 @@
 // It opens its own path to /term, so it can turn off echo and line editing
 // without changing the Shell's path, and redraws only the cells that change.
 //
-// Keys: arrows or a/d/w/s (or j/l/i/k), space = drop, p = pause, q = quit.
+// Keys: arrows or a/d/w/s (or j/l/i/k), space = drop, p = pause, q = quit,
+// m = music on/off.
+//
+// Sound goes to the SN76489 the TFR/911H firmware emulates at $FF41 (where
+// the CoCo Game Master Cartridge has one): Korobeiniki on voices 0 and 1,
+// effects on voice 2 and the noise voice.  Keyclicks ($FF42 bit 0) are
+// turned off while playing.
 // On the TFR/911H, arrows arrive as a CoCo 3 sends them: left $08,
 // right $09, up $0C, down $0A.
 //
@@ -64,6 +70,131 @@ byte level, timer, bagpos;
 byte bag[7];
 byte panel_dirty, paused, over;
 unsigned seed;
+
+// ── Sound ──────────────────────────────────────────────────────────
+
+#define SND (*(volatile byte *)0xFF41)    // SN76489
+#define SNDCTL (*(volatile byte *)0xFF42) // bit 0: keyclicks
+
+// SN76489 dividers (3579545 / 32 / Hz) for MIDI notes 45 (A2) to 96 (C7).
+const unsigned note_n[52] = {
+    1017, 960, 906, 855, 807, 762, 719, 679, 641, 605, 571, 539, 508,
+    480, 453, 428, 404, 381, 360, 339, 320, 302, 285, 269, 254, 240,
+    226, 214, 202, 190, 180, 170, 160, 151, 143, 135, 127, 120, 113,
+    107, 101, 95, 90, 85, 80, 76, 71, 67, 64, 60, 57, 53};
+
+void snd_note(byte ch, byte midi) {
+    unsigned n = note_n[midi - 45];
+    SND = (byte)(0x80 | (ch << 5) | (n & 15));
+    SND = (byte)((n >> 4) & 0x3F);
+}
+
+void snd_vol(byte ch, byte att) {   // att: 0 loudest .. 15 off
+    SND = (byte)(0x90 | (ch << 5) | att);
+}
+
+// Korobeiniki, as (MIDI note, eighths) pairs; note 0 is a rest.
+const byte melody[] = {
+    76,2, 71,1, 72,1, 74,2, 72,1, 71,1,
+    69,2, 69,1, 72,1, 76,2, 74,1, 72,1,
+    71,3, 72,1, 74,2, 76,2,
+    72,2, 69,2, 69,2, 0,2,
+    0,1, 74,2, 77,1, 81,2, 79,1, 77,1,
+    76,3, 72,1, 76,2, 74,1, 72,1,
+    71,2, 71,1, 72,1, 74,2, 76,2,
+    72,2, 69,2, 69,2, 0,2,
+    0,0};
+
+// The bass: one note per eighth, bouncing between octaves.
+const byte bass[64] = {
+    52,64,52,64,52,64,52,64,  45,57,45,57,45,57,45,57,
+    56,68,56,68,52,64,52,64,  45,57,45,57,45,57,45,57,
+    50,62,50,62,50,62,50,62,  48,60,48,60,48,60,48,60,
+    47,59,47,59,52,64,52,64,  45,57,45,57,45,57,45,57};
+
+// Effects: (note, ticks, attenuation) triples, ending with ticks 0.
+const byte sfx_move[] = {79,1,11, 0,0,0};
+const byte sfx_rotate[] = {84,2,8, 0,0,0};
+const byte sfx_clear[] = {72,3,4, 76,3,4, 79,3,4, 84,5,4, 0,0,0};
+const byte sfx_tetris[] = {72,3,3, 76,3,3, 79,3,3, 84,3,3, 88,3,3, 91,3,3,
+                           96,10,3, 0,0,0};
+const byte sfx_level[] = {84,4,4, 91,6,4, 0,0,0};
+const byte sfx_over[] = {72,8,4, 71,8,4, 69,8,4, 67,8,4, 65,8,4, 64,8,4,
+                         62,8,4, 60,20,4, 0,0,0};
+
+byte music_on = 1;
+byte mpos, mleft, mtick, beat;
+const byte *sfx;
+byte sfx_left, thud;
+byte saved_sndctl;
+
+void sfx_play(const byte *seq) {
+    sfx = seq;
+    sfx_left = 0;
+}
+
+void snd_quiet(void) {
+    byte ch;
+    for (ch = 0; ch < 4; ch++) snd_vol(ch, 15);
+}
+
+void music_tick(byte level) {
+    byte tpe = (byte)(11 - (level < 8 ? level / 2 : 4));  // ticks per eighth
+    if (mtick == 0) {
+        mtick = tpe;
+        snd_note(1, bass[beat]);
+        snd_vol(1, 7);
+        beat = (byte)((beat + 1) & 63);
+        if (mleft == 0) {
+            if (melody[2 * mpos + 1] == 0) mpos = 0;
+            mleft = melody[2 * mpos + 1];
+            if (melody[2 * mpos]) {
+                snd_note(0, melody[2 * mpos]);
+                snd_vol(0, 4);
+            } else {
+                snd_vol(0, 15);
+            }
+            mpos++;
+        }
+        mleft--;
+    }
+    if (mtick == tpe / 2) snd_vol(1, 15);         // staccato bass
+    if (mleft == 0 && mtick == 2) snd_vol(0, 15);  // gap before the next note
+    mtick--;
+}
+
+void sfx_tick(void) {
+    if (sfx) {
+        if (sfx_left == 0) {
+            if (sfx[1] == 0) {
+                snd_vol(2, 15);
+                sfx = 0;
+            } else {
+                snd_note(2, sfx[0]);
+                snd_vol(2, sfx[2]);
+                sfx_left = sfx[1];
+                sfx += 3;
+            }
+        }
+        if (sfx_left) sfx_left--;
+    }
+    if (thud) {
+        thud--;
+        snd_vol(3, thud ? (byte)(13 - 2 * thud) : 15);
+    }
+}
+
+void snd_thud(void) {
+    SND = 0xE5;     // noise: white, rate 1
+    thud = 6;
+}
+
+void sound_tick(byte level, byte playing) {
+    if (playing && music_on) {
+        music_tick(level);
+    }
+    sfx_tick();
+}
 
 // ── OS-9 system calls ──────────────────────────────────────────────
 
@@ -303,11 +434,13 @@ void clear_lines(void) {
     }
     if (n) {
         static const unsigned points[5] = {0, 40, 100, 300, 1200};
+        byte old_level = level;
         score += points[n] * (level + 1);
         lines += n;
         level = (byte)(lines / 10);
         if (level > 19) level = 19;
         panel_dirty = 1;
+        sfx_play(n == 4 ? sfx_tetris : (level != old_level ? sfx_level : sfx_clear));
     }
 }
 
@@ -321,6 +454,7 @@ void lock(void) {
         if (cy < 0) { over = 1; continue; }
         board[cy][px + (i & 3)] = (byte)(cur + 1);
     }
+    snd_thud();
     clear_lines();
     if (!over) spawn();
 }
@@ -342,6 +476,7 @@ void rotate(void) {
         if (fits(cur, r, px + kicks[i], py)) {
             rot = r;
             px += kicks[i];
+            sfx_play(sfx_rotate);
             return;
         }
     }
@@ -350,14 +485,25 @@ void rotate(void) {
 void handle(int k) {
     if (k >= 'A' && k <= 'Z') k += 'a' - 'A';
     if (k == 'q' || k == 27) { over = 2; return; }
-    if (k == 'p') { paused = !paused; panel_dirty = 1; return; }
+    if (k == 'p') {
+        paused = !paused;
+        panel_dirty = 1;
+        snd_quiet();
+        return;
+    }
+    if (k == 'm') {
+        music_on = !music_on;
+        snd_vol(0, 15);
+        snd_vol(1, 15);
+        return;
+    }
     if (paused || over) return;
     switch (k) {
         case 8: case 'a': case 'j':
-            if (fits(cur, rot, px - 1, py)) px--;
+            if (fits(cur, rot, px - 1, py)) { px--; sfx_play(sfx_move); }
             break;
         case 9: case 'd': case 'l':
-            if (fits(cur, rot, px + 1, py)) px++;
+            if (fits(cur, rot, px + 1, py)) { px++; sfx_play(sfx_move); }
             break;
         case 12: case 'w': case 'i': case 'x':
             rotate();
@@ -412,6 +558,7 @@ void draw_frame(void) {
     text(TOP + 15, PANEL, "down  or s     soft drop");
     text(TOP + 16, PANEL, "space          drop");
     text(TOP + 17, PANEL, "p pause    q quit");
+    text(TOP + 18, PANEL, "m music on/off");
 
     for (y = 0; y < H; y++)
         for (x = 0; x < W; x++) shown[y][x] = UNKNOWN;
@@ -444,7 +591,7 @@ void draw_panel(void) {
             cur_col += 2;
         }
     }
-    text(TOP + 19, PANEL, paused ? "** PAUSED **  " : "              ");
+    text(TOP + 20, PANEL, paused ? "** PAUSED **  " : "              ");
     panel_dirty = 0;
 }
 
@@ -505,6 +652,10 @@ void play(void) {
     bagpos = 0;
     paused = 0;
     over = 0;
+    mpos = mleft = mtick = beat = 0;
+    sfx = 0;
+    thud = 0;
+    snd_quiet();
     nextp = next_piece();
     spawn();
     draw_frame();
@@ -516,11 +667,13 @@ void play(void) {
             timer = 0;
             step();
         }
+        sound_tick(level, (byte)(!paused && !over));
         draw_well();
         if (panel_dirty) draw_panel();
         flush();
         sleep_tick();
     }
+    snd_quiet();
 }
 
 int main(void) {
@@ -533,6 +686,8 @@ int main(void) {
     }
     catch_signals();
     seed = clock_seed();
+    saved_sndctl = SNDCTL;
+    SNDCTL = (byte)(saved_sndctl & ~1);      // no keyclicks while playing
 
     while (again && !sig) {
         play();
@@ -543,14 +698,18 @@ int main(void) {
         text(TOP + 11, LEFT + 2, " q: quit      ");
         flush();
         again = 0;
+        sfx_play(sfx_over);
         while (!sig) {
             k = key();
             if (k == 'r' || k == 'R') { again = 1; break; }
             if (k == 'q' || k == 'Q' || k == 27) break;
+            sfx_tick();
             sleep_tick();
         }
     }
 
+    snd_quiet();
+    SNDCTL = saved_sndctl;
     put("\033[0m\033[2J\033[H\033[?25h");   // clear, show the cursor
     flush();
     close_term();

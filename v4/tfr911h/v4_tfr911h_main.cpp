@@ -835,6 +835,9 @@ void IN_RAM Engine__Foreground() {
     Engine::Foreground();
 }
 
+// Sound: PWM on GPIO 8, an SN76489 at $FF41, keyclicks and the bell.
+#include "v4_audio.h"
+
 // NitrOS-9 Level 2, chosen with the Tcl command `l2` instead of `bye`.
 volatile bool boot_l2 = false;
 #include "v4_nitros9_l2.h"
@@ -1257,6 +1260,8 @@ void IN_RAM tfr911_background() {
   global_tcl_interp = Tcl_CreateInterp();
   register_tcl_commands(global_tcl_interp);
   Tcl_CreateCommand(global_tcl_interp, (char*)"l2", l2_cmd, NULL, NULL);
+  Tcl_CreateCommand(global_tcl_interp, (char*)"beep", beep_cmd, NULL, NULL);
+  Tcl_CreateCommand(global_tcl_interp, (char*)"click", click_cmd, NULL, NULL);
 
   // Create all coroutines upfront
   Coro tcl_repl_coro;
@@ -1411,6 +1416,7 @@ int main() {
   safe_adjust_flash_speed();
   stdio_usb_init();
   InitializePinsReturnDirections();
+  audio::Init();
 
   for (int i = 0; i < 3; i++) {
     gpio_put(LED, 1);

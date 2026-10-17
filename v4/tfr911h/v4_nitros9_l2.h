@@ -12,6 +12,7 @@
 //          constant RAM page at $FE00-$FEFF.
 //   ACIA   MC6850 at $FF14 (status/control) and $FF15 (data): the console.
 //   EmuDsk $FF80-$FF86 virtual hard disk, served by the tether (-disks=...).
+//   Sound  $FF41 SN76489 and $FF42 control (see v4_audio.h).
 //   RTC    $FFC0-$FFC7 in the format of Jeff Vavasour's CoCo 3 emulator
 //          (clock2_jvemu): century, year, month, day, weekday, hour,
 //          minute, second, all binary.  The tether sends the wall time.
@@ -176,6 +177,8 @@ byte IN_RAM IORead(uint addr) {
     }
     case EMUDSK_PORT + 3:
       return disk_status;
+    case 0x42:
+      return audio::control;
     case RTC_PORT + 0: case RTC_PORT + 1: case RTC_PORT + 2: case RTC_PORT + 3:
     case RTC_PORT + 4: case RTC_PORT + 5: case RTC_PORT + 6: case RTC_PORT + 7:
       return rtc[a & 7];
@@ -217,7 +220,14 @@ void IN_RAM IOWrite(uint addr, byte data) {
       break;
     case ACIA_PORT + 1:  // 6850 Tx data
       stat_tx_bytes++;
+      if (data == 7) audio::Bell();
       Say(data);
+      break;
+    case 0x41:  // SN76489
+      audio::WriteChip(data);
+      break;
+    case 0x42:  // sound control
+      audio::control = data;
       break;
     case EMUDSK_PORT + 3:
       DoDiskCommand(data);
@@ -319,6 +329,7 @@ void DeliverKeystroke() {
     rx_char = ch;
     __dmb();
     rx_full = true;
+    audio::Click();
   }
 }
 
@@ -331,12 +342,13 @@ void ReportStats() {
            d = stat_disk_ops;
   char buf[120];
   int n = snprintf(buf + 1, sizeof buf - 1,
-                   "L2 stats: %lu cycles/s, %lu idle/s, %lu irqs/s, %lu disk/s, %lu tx",
+                   "L2 stats: %lu cycles/s, %lu idle/s, %lu irqs/s, %lu disk/s, %lu tx, %lu snd",
                    (unsigned long)((uint64_t)(c - last_cycles) * 1000000 / (now - last_us)),
                    (unsigned long)((uint64_t)(i - last_idle) * 1000000 / (now - last_us)),
                    (unsigned long)((uint64_t)(q - last_irqs) * 1000000 / (now - last_us)),
                    (unsigned long)((uint64_t)(d - last_disk) * 1000000 / (now - last_us)),
-                   (unsigned long)stat_tx_bytes);
+                   (unsigned long)stat_tx_bytes,
+                   (unsigned long)audio::stat_chip_writes);
   buf[0] = C_LOGGING;
   CobsEncodeAndTransmit((byte*)buf, n + 1, [](int ch) { putchar_raw(ch); });
 

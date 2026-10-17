@@ -29,6 +29,7 @@ set UNIX_CMDS {
     pwd=pd,PWD=1
     pxd=pd,PXD=1
     clear
+    beep click
 }
 
 # Generated sources go here.  FindViaUsing looks here after ./modules.
