@@ -849,6 +849,8 @@ func RunSelect(inkey chan byte, fromUSB <-chan byte, channelToPico chan []byte, 
 	}
 
 	var previousPutChar byte
+	var utf8Seq []byte // a UTF-8 character, arriving a byte at a time
+	var utf8Need int   // the bytes it still needs
 	var remember int64
 	var timer_sum int64
 	var timer_count int64
@@ -1370,6 +1372,33 @@ func RunSelect(inkey chan byte, fromUSB <-chan byte, channelToPico chan []byte, 
 				} // otherwise use the ch from default case.
 
 				for _, ch = range chs {
+					// UTF-8 goes to the terminal as it is.  Any other byte
+					// of 128 or more is shown as its Latin-1 character.
+					if !*CURLY_DEC {
+						if utf8Need > 0 {
+							if ch&0xC0 == 0x80 {
+								utf8Seq = append(utf8Seq, ch)
+								utf8Need--
+								if utf8Need == 0 {
+									os.Stdout.Write(utf8Seq)
+									utf8Seq = utf8Seq[:0]
+								}
+								previousPutChar = ch
+								continue
+							}
+							for _, b := range utf8Seq {
+								fmt.Printf("%c", b)
+							}
+							utf8Seq = utf8Seq[:0]
+							utf8Need = 0
+						}
+						if n := utf8Length(ch); n > 1 {
+							utf8Seq = append(utf8Seq, ch)
+							utf8Need = n - 1
+							previousPutChar = ch
+							continue
+						}
+					}
 					switch {
 					case 32 <= ch && ch <= 126:
 						fmt.Printf("%c", ch)
@@ -1518,6 +1547,20 @@ func HandleWrite(regs *Regs) {
 			}
 		}
 	*/
+}
+
+// utf8Length is the length of the UTF-8 character that starts with b,
+// or 0 if b cannot start one of two bytes or more.
+func utf8Length(b byte) int {
+	switch {
+	case 0xC2 <= b && b <= 0xDF:
+		return 2
+	case 0xE0 <= b && b <= 0xEF:
+		return 3
+	case 0xF0 <= b && b <= 0xF4:
+		return 4
+	}
+	return 0
 }
 
 func ShowChar(b byte) {
