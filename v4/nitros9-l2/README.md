@@ -157,8 +157,9 @@ With a FujiNet on GPIO 12/13, NitrOS-9 has four DriveWire disks
 (`/X0`-`/X3`, the FujiNet's device slots 1-4), the network devices `/N`,
 `/N1`-`/N5`, and the commands that manage the FujiNet: `fnstatus`,
 `fnlisthosts`, `fngethost`, `fnsethost`, `fnmount`, `fnlistdevs`,
-`fngetdevfile`, `fnsetdevfile`, `fnmountimg`, `fnconfig` (FujiNet CONFIG)
-and `fnweather`.  It can boot from the FujiNet too: `l2fn` at `TCL>`, or
+`fngetdevfile`, `fnsetdevfile`, `fnmountimg`, `fnconfig` (FujiNet CONFIG),
+and the programs `fnweather`, `fnnews` and `fnstocks`.  It can boot from
+the FujiNet too: `l2fn` at `TCL>`, or
 
 ```
 make fujinet-disk                 # level2.dsk -> level2-fn.dsk, booting from the FujiNet
@@ -207,7 +208,9 @@ from a NitrOS-9 source tree.  It produces:
 
 `modules/` holds TFR/911H-specific modules, which take precedence over
 NitrOS-9's, as do the FujiNet's modules and definitions in `fujinet/`.
-The FujiNet commands are built from `fujinet/cmds/`.  The modules in `OS9Boot` and the commands on the disk are
+The FujiNet commands are built from `fujinet/cmds/`, and `fnnews` and
+`fnstocks` from the C in `fujinet/news/`, `fujinet/stocks/` and
+`fujinet/c/`.  The modules in `OS9Boot` and the commands on the disk are
 listed at the end of `rmake-l2.tcl`.
 
 ### Prerequisites

@@ -19,8 +19,10 @@ LWAR ?= lwar
 # Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html).
 CMOC ?= cmoc
 GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/info)
-# The FujiNet commands (see fujinet/README.md).
+# The FujiNet commands (see fujinet/README.md), and the FujiNet programs
+# in C, which need CMOC too.
 FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
+FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -38,13 +40,13 @@ $B/tfr911-level2.dsk: $B/Makefile FORCE
 	$(MAKE) -C $B
 $B/tfr911-level2-fn.t35 $B/tfr911-level2-fn.o9b: $B/tfr911-level2.dsk
 
-build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $(GAMES) $(FN_CMDS)
+build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $(GAMES) $(FN_CMDS) $(FN_APPS)
 	cp -f $< $@
 	$(OS9_TOOL) copy -l -r startup $@,startup
 	$(OS9_TOOL) attr -q -r -w -pr $@,startup
 	$(OS9_TOOL) copy -r build/grep $@,CMDS/grep
 	$(OS9_TOOL) attr -q -r -w -e -pr -pe $@,CMDS/grep
-	for g in $(GAMES) $(FN_CMDS); do \
+	for g in $(GAMES) $(FN_CMDS) $(FN_APPS); do \
 	  $(OS9_TOOL) copy -r $$g $@,CMDS/$$(basename $$g) && \
 	  $(OS9_TOOL) attr -q -r -w -e -pr -pe $@,CMDS/$$(basename $$g) || exit 1; \
 	done
@@ -94,6 +96,54 @@ build/fn/%.o: fujinet/cmds/%.as fujinet/defs/drivewire.d fujinet/lib/fnansi.as
 	$(LWASM) $(FN_FLAGS) -o $@ $<
 build/fn/%: build/fn/%.o build/fn/fnnet.o build/fn/fuji.o build/sys.o build/alib.a
 	cd build/fn && $(LWLINK) --format=os9 -o $* $*.o fnnet.o fuji.o ../sys.o ../alib.a
+
+# The FujiNet programs in C.  fujinet/c is their FujiNet (fujinet-lib's
+# calls, through SS.Fuji) and their terminal.
+FN_C = fujinet/c
+# The stack space counts only when compiling the file with main().
+FN_CFLAGS = --os9 --function-stack=0 --add-os9-stack-space=2048 -DBUILD_OS9 -I$(FN_C)
+FN_C_OBJS = build/fn/c/term.o build/fn/c/fujinet.o
+build/fn/c/%.o: $(FN_C)/%.c $(wildcard $(FN_C)/*.h)
+	mkdir -p $(dir $@)
+	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
+
+# fnnews: FujiNetWIFI/fujinet-news's CoCo client.
+NEWS = fujinet/news
+NEWS_OBJS = $(patsubst $(NEWS)/%.c,build/fn/news/%.o,$(wildcard $(NEWS)/*.c))
+build/fn/news/%.o: $(NEWS)/%.c $(wildcard $(NEWS)/*.h $(FN_C)/*.h)
+	mkdir -p $(dir $@)
+	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
+build/fn/fnnews: $(NEWS_OBJS) $(FN_C_OBJS)
+	cd build/fn && $(CMOC) --os9 -o fnnews \
+	  $(patsubst build/fn/%,%,$^)
+
+# fnstocks: FujiNetWIFI/fujinet-stocks, commit STOCKS_VERSION, with an
+# os9 platform beside its coco one.
+STOCKS = fujinet/stocks
+STOCKS_VERSION = 1ececd8
+STOCKS_OBJS = $(patsubst $(STOCKS)/src/%.c,build/fn/stocks/%.o,\
+  $(wildcard $(STOCKS)/src/*.c $(STOCKS)/src/os9/*.c))
+STOCKS_CFLAGS = $(FN_CFLAGS) -I$(STOCKS)/include -I$(STOCKS)/include/os9 \
+  '-DGIT_VERSION="$(STOCKS_VERSION)"'
+build/fn/stocks/%.o: $(STOCKS)/src/%.c \
+    $(wildcard $(STOCKS)/include/*.h $(STOCKS)/include/os9/*.h $(FN_C)/*.h)
+	mkdir -p $(dir $@)
+	$(CMOC) $(STOCKS_CFLAGS) -c -o $@ $<
+build/fn/fnstocks: $(STOCKS_OBJS) $(FN_C_OBJS)
+	cd build/fn && $(CMOC) --os9 -o fnstocks \
+	  $(patsubst build/fn/%,%,$^)
+
+# fnnews and fnstocks for this computer, for testing: curl and python3 are
+# the FujiNet (fujinet/c/fujinet-host.c).
+build/fnnews-host: $(wildcard $(NEWS)/*.[ch] $(FN_C)/*.[ch])
+	mkdir -p build
+	$(CC) -O2 -I$(FN_C) -o $@ $(NEWS)/*.c $(FN_C)/term.c $(FN_C)/fujinet-host.c
+build/fnstocks-host: $(wildcard $(STOCKS)/src/*.c $(STOCKS)/src/os9/*.c \
+    $(STOCKS)/include/*.h $(STOCKS)/include/os9/*.h $(FN_C)/*.[ch])
+	mkdir -p build
+	$(CC) -O2 -DBUILD_OS9 '-DGIT_VERSION="$(STOCKS_VERSION)"' -I$(STOCKS)/include \
+	  -idirafter $(STOCKS)/include/os9 -I$(FN_C) -o $@ $(STOCKS)/src/*.c \
+	  $(STOCKS)/src/os9/conio.c $(STOCKS)/src/os9/init.c $(FN_C)/term.c $(FN_C)/fujinet-host.c
 
 build/tetris: games/tetris.c
 	mkdir -p build

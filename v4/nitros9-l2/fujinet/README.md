@@ -3,8 +3,9 @@
 A FujiNet plugged into the TFR/911H gives NitrOS-9 four DriveWire disks
 (`/X0`-`/X3`, the FujiNet's device slots 1-4), the network devices `/N`,
 `/N1`-`/N5`, and the `fn*` commands that manage the FujiNet: its hosts,
-its device slots and its WiFi, a CONFIG program, and a weather program.
-NitrOS-9 can also boot from the FujiNet, with `/DD` on `/X0`.
+its device slots and its WiFi, a CONFIG program, and programs for the
+weather, the news and stock quotes.  NitrOS-9 can also boot from the
+FujiNet, with `/DD` on `/X0`.
 
 The commands, the libraries and the driver changes here come from the
 FujiNet work in [dillera/nitros9](https://github.com/dillera/nitros9)
@@ -145,6 +146,8 @@ makes the FujiNet open the new one.
 | `fnmountimg <device_slot> [<mode>]` | Mount a device slot's image |
 | `fnconfig` | FujiNet CONFIG: status, hosts, device slots (with a directory browser), WiFi |
 | `fnweather` | The weather where you are, from ip-api.com and Open-Meteo |
+| `fnnews` | The news, from the FujiNet news server (FujiNetWIFI/fujinet-news) |
+| `fnstocks` | Ten stocks and a ticker, from Finnhub (FujiNetWIFI/fujinet-stocks) |
 
 Slots are numbered from 0 here (device slot 0 is `/X0`), as the FujiNet
 numbers them on the wire.
@@ -152,6 +155,38 @@ numbers them on the wire.
 `fnconfig` and `fnweather` were written for a CoCo 3 window.  Built here
 with `ANSI=1` (`lib/fnansi.as`), they draw with ANSI escape sequences for
 the tether's terminal, which should be at least 80 by 24.
+
+## Programs in C
+
+`fnnews` and `fnstocks` are the CoCo versions of two FujiNet programs,
+written in C against fujinet-lib and compiled with CMOC, which can
+compile for OS-9.  `c/` has what they need from NitrOS-9:
+
+* `c/fujinet.c`: the fujinet-lib calls they use (`network_open`,
+  `network_status`, `network_read`, `network_json_parse`,
+  `network_json_query`, `network_close`, and app keys), each made of
+  `SS.Fuji` exchanges on `/N1`, as `lib/fnnet.as` makes them, with the
+  same names and arguments as fujinet-lib's (`fujinet-network.h`,
+  `fujinet-fuji.h`).
+* `c/term.c`: the tether's terminal, with raw keys (Esc and ^C are the
+  CoCo's BREAK, and the arrows arrive as they are, with bit 7 of `$FF42`
+  set), and a copy of the screen, so that a row can be shown in reverse
+  video and back again, which the CoCo programs do by flipping the
+  attribute bytes in screen memory.
+
+`news/` is the CoCo client of
+[fujinet-news](https://github.com/FujiNetWIFI/fujinet-news)
+(`clients/src/coco`, commit b351d24) with the CoCo 3's 80-column layout;
+its screen code became `news/screen.c`.  `stocks/` is
+[fujinet-stocks](https://github.com/FujiNetWIFI/fujinet-stocks) (commit
+1ececd8) with an `os9` platform (`include/os9/`, `src/os9/`) beside its
+`coco` one; its own files changed in a few lines (`BUILD_OS9`: an 80-column
+screen, Esc for BREAK, and the ticker drawn only when it moves).  The stock
+list is in the same app keys as on other computers.
+
+For trying a change without the board, `make build/fnnews-host` and
+`make build/fnstocks-host` build them for this computer, with
+`c/fujinet-host.c` (curl and python3) as the FujiNet.
 
 ## How it works
 
@@ -173,5 +208,5 @@ the tether's terminal, which should be at least 80 by 24.
   `lib/sys6809l2.as` makes the linked commands' system definitions from it.
 
 `../rmake-l2.tcl` lists the modules (`FUJINET_MODS`), and `../Makefile`
-builds the commands.  `tests/` has the source checks from dillera/nitros9:
+builds the commands and the programs in C.  `tests/` has the source checks from dillera/nitros9:
 `python3 -m unittest discover -s tests`.

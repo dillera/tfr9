@@ -142,14 +142,14 @@
 \rmfamily\normalsize
 This manual describes the commands, games, and tools added to NitrOS-9
 Level 2 on the TFR/911H single board computer, the hardware the TFR/911H
-firmware presents to OS-9, and how to build and maintain the system. It
-begins with an introduction to OS-9 Level 1 and Level 2 as they run on the
-board.
-\end{minipage}
+firmware presents to OS-9, networking with a FujiNet, and how to build and
+maintain the system. It begins with an introduction to OS-9 Level 1 and
+Level 2 as they run on the board.
+\end{minipage}\par\vspace{0.6ex}
 
 \vspace{0.35in}
 \begin{tabular}{@{}l l@{}}
-\bfseries Revision/Update Information: & This is a new manual.\\[3pt]
+\bfseries Revision/Update Information: & This revision adds Chapter 2, Networking.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
 \end{tabular}
@@ -163,7 +163,8 @@ board.
 \clearpage
 \vspace*{\fill}
 {\small
-\textbf{First Printing, October 2026}
+\textbf{First Printing, October 2026}\\
+\textbf{Revised, October 2026}
 
 The information in this document is subject to change without notice and
 should not be construed as a commitment by anyone in particular. The
@@ -180,7 +181,8 @@ equipment that was soldered together at a kitchen table.
 \textbf{Trademarks.} OS-9 is a trademark of Microware Systems Corporation.
 NitrOS-9 is the work of the NitrOS-9 Project. Zork is a registered
 trademark of Infocom, Inc. Tetris is a trademark of The Tetris Company.
-Raspberry Pi is a trademark of Raspberry Pi Ltd. Color Computer and
+Raspberry Pi is a trademark of Raspberry Pi Ltd. ESP32 is a trademark of
+Espressif Systems. Color Computer and
 CoCo are associated with Tandy Corporation. ULTRIX and DEC are
 trademarks of Digital Equipment Corporation.
 
@@ -209,7 +211,7 @@ This document was prepared with \LaTeX{} from
 This manual describes the software that turns a TFR/911H into a small,
 complete OS-9 system: NitrOS-9 Level 2, booted by the board's firmware,
 with a disk, a clock, a Unix-flavored set of commands, an editor, a sound
-chip, and games. It also describes the hardware that the firmware
+chip, games, and a network connection through a FujiNet. It also describes the hardware that the firmware
 emulates for OS-9, and how to rebuild everything.
 
 \section*{Audience}
@@ -220,13 +222,17 @@ change the firmware or the disk. No knowledge of OS-9 is assumed in
 Chapter~1.
 
 \section*{Organization}
-This manual has two chapters and two appendices:
+This manual has three chapters and two appendices:
 
 \begin{tabularx}{\linewidth}{@{}>{\bfseries}l X@{}}
 Chapter 1 & Introduces the TFR/911H, OS-9 Level 1 and Level 2, the
 TurbOS and NitrOS-9 systems that run on the board, and a first
 session.\\
-Chapter 2 & Contains the reference pages, grouped as ULTRIX grouped
+Chapter 2 & Describes networking: the FujiNet adapter, how it connects
+to the board, DriveWire, the FujiNet in NitrOS-9, and how to program it,
+with \cmd{fnweather} as the example, and two programs in C brought over
+from the Color Computer.\\
+Chapter 3 & Contains the reference pages, grouped as ULTRIX grouped
 them: Section 1, Commands; Section 4, Special Files (the hardware);
 Section 6, Games; and Section 8, Maintenance.\\
 Appendix A & Explains how to connect a speaker.\\
@@ -431,7 +437,7 @@ These are in memory once the system is up (\rp{info}{1} lists them):
 
 \section{What Was Added}
 
-These are the commands, games, and tools described in Chapter~2. Each has
+These are the commands, games, and tools described in Chapter~3. Each has
 a \cmd{man} page on the board too: type \type{man} \var{name}.
 
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.25in}X@{}}
@@ -449,6 +455,8 @@ a \cmd{man} page on the board too: type \type{man} \var{name}.
 \rp{fujinet}{1} & The FujiNet's hosts, device slots, and status: \cmd{fnstatus}, \cmd{fnlistdevs}, \ldots\\
 \rp{fnconfig}{1} & FujiNet CONFIG\\
 \rp{fnweather}{1} & The weather where you are\\
+\rp{fnnews}{1} & The news, from the FujiNet news server\\
+\rp{fnstocks}{1} & Ten stocks, with a ticker\\
 \rp{fujinet}{4} & The FujiNet: its wiring, its disks, and booting from it\\
 \rp{tfr911h}{4} & The hardware the firmware emulates\\
 \rp{sn76489}{4} & Programming the sound chip\\
@@ -508,6 +516,835 @@ a carriage return, not a line feed.
 \end{itemize}
 
 % ═══════════════════════════════════════════════════════════════════
+\chapter{Networking}
+\chapterpages
+\renewcommand{\thesectname}{Networking}
+
+This chapter describes how the TFR/911H reaches the network: the FujiNet
+adapter, how it is wired to the board and what the firmware makes of it,
+the DriveWire protocol that runs between them, how NitrOS-9 uses it, and
+how to write programs that use it. It ends with a walk through
+\cmd{fnweather}, a program that finds where you are and shows the weather
+there, and with two programs in C, \cmd{fnnews} and \cmd{fnstocks}, that
+came from the Color Computer with little change.
+
+\section{The FujiNet}
+
+A FujiNet is a network adapter for old computers. It began on the Atari
+8-bit computers and now serves the Apple~II, the Coleco ADAM, the
+Commodore machines, the Color Computer, and many more, each through its
+own peripheral bus. To the computer it is a set of devices---disk drives,
+network devices, a clock, a printer---and behind them it has WiFi and an
+SD card. A disk can be an image file on the SD card or on a server on the
+network; a network device can fetch a web page, pick fields out of the
+JSON in it, or hold a TCP connection open.
+
+On the TFR/911H the FujiNet gives NitrOS-9:
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item four disk drives, \file{/X0}--\file{/X3}, whose disks are image files
+the FujiNet reads from its SD card or a TNFS server;
+\item network devices, \file{/N} and \file{/N1}--\file{/N5}, through which
+programs ask the FujiNet to fetch from the network;
+\item a place to boot from: \cmd{l2fn} boots NitrOS-9 from the FujiNet's
+first disk;
+\item commands to manage it, \rp{fujinet}{1} and \rp{fnconfig}{1}, and
+programs that use it: \rp{fnweather}{1}, \rp{fnnews}{1}, and
+\rp{fnstocks}{1}.
+\end{itemize}
+
+\subsection{The hardware}
+
+The FujiNet is an Espressif ESP32 on a small board. The one these pages
+were written with is an ESP32 development board with this module:
+
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Part} & \textbf{What it is}\\
+\midrule
+CPU & ESP32-D0WD-V3: two Xtensa LX6 cores at 240~MHz\\
+Memory & 520K of SRAM, and 4M of PSRAM\\
+Flash & 8M: the firmware, and a LittleFS file system with the web pages\\
+Radio & 2.4~GHz WiFi 802.11~b/g/n (and Bluetooth, unused here)\\
+SD card & For disk images, and the FujiNet's settings, \file{fnconfig.ini}\\
+USB & A CP2102N USB serial bridge, for flashing and for the FujiNet's own log (460{,}800 baud)\\
+Buttons & A (GPIO~0) and C, safe reset (GPIO~14)\\
+LED & The bus activity light, GPIO~4\\
+\bottomrule
+\end{tabularx}
+
+\subsection{The firmware}
+
+The FujiNet runs \emph{fujinet-firmware}
+(\file{github.com/FujiNetWIFI/fujinet-firmware}), one C++ code base built
+for each kind of computer. For the TFR/911H it is built for the board
+\texttt{fujinet-coco-devkitc-centipede}, which was added for the
+Centipede, a Color Computer cartridge with an RP2350 on it. That build
+selects:
+
+\begin{keys}[1.3in]
+\texttt{BUILD\_COCO} & The Color Computer's devices.\\
+\texttt{DRIVEWIRE} & DriveWire as the bus: the protocol a CoCo uses to
+reach a DriveWire server over a serial line.\\
+\texttt{COCO\_HS\_UART} & A plain 3.3-volt serial link on the ESP32's
+UART1, at a fixed 921{,}600 baud, with no line inversion and no flow
+control---made for a microcontroller at the other end rather than a
+CoCo's bit-banger port.\\
+\end{keys}
+
+Besides the DriveWire devices, the firmware joins your WiFi network, sets
+its clock by SNTP, and runs a web server. Its web pages show and change
+its settings, and its WebDAV server at \file{/dav} offers its SD card to
+your computer's file manager or to \cmd{curl}. Its settings---the WiFi
+network, the eight host slots, the device slots---are kept in
+\file{fnconfig.ini}, on the SD card and in flash.
+
+The firmware must read the version byte that NitrOS-9 sends after
+\texttt{OP\_DWINIT} (see ``DriveWire'' below). At this writing the fix is
+in pull request 2027 to fujinet-firmware, and in the branch
+\texttt{drivewire-dwinit-version} of \file{dillera/fujinet-firmware}.
+\file{v4/nitros9-l2/fujinet/README.md} tells how to build and flash it.
+
+\section{How the FujiNet Connects to the TFR/911H}
+
+\subsection{The wiring}
+
+The FujiNet needs three wires to the TFR/911H, wired as the Centipede's
+FujiNet hat is:
+
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{RP2350B} & \textbf{ESP32} & \textbf{Signal}\\
+\midrule
+GPIO~12 (UART0 TX) & GPIO~33 (UART1 RX) & Data to the FujiNet\\
+GPIO~13 (UART0 RX) & GPIO~21 (UART1 TX) & Data from the FujiNet\\
+GND & GND & \\
+\bottomrule
+\end{tabularx}
+
+Both ends are 3.3-volt parts, so they connect directly. The link runs at
+921{,}600 baud, 8 data bits, no parity, one stop bit, with no flow control:
+about 92{,}000 bytes a second, or a 256-byte sector in under 3~ms. The
+FujiNet's own USB port can stay plugged into your computer, which powers
+it and shows its log.
+
+\subsection{Inside the RP2350B}
+
+The 6309 cannot see a serial port; it sees only what the RP2350B answers
+on its bus. The firmware puts the link in the 6309's I/O page as a
+\emph{becker port}, the simple two-register interface that CoCo
+emulators give DriveWire (\file{v4\_fujinet.h}, in \file{v4/tfr911h}):
+
+\begin{keys}[1.05in]
+\file{\$FF45} & Status. Bit~1 is set when a byte from the FujiNet is
+waiting.\\
+\file{\$FF46} & Data. Reading takes the next byte from the FujiNet;
+writing sends a byte to it.\\
+\end{keys}
+
+Emulators put the becker port at \file{\$FF41}, but that is where the
+TFR/911H has its sound chip, so the port is four bytes higher, and
+NitrOS-9's DriveWire modules are built to match.
+
+The RP2350B's two cores share the work:
+
+\par\vspace{0.6ex}\noindent\begin{minipage}{\linewidth}
+\begin{exsmall}
+   6309                 RP2350B core 1              RP2350B core 0              ESP32
+                        (the bus loop)
+
+  ldb $FF45  ------>  Status(): is the       <---  UART0 interrupt:      <---  UART1 TX
+                      receive ring empty?          FIFO -> receive ring        GPIO 21
+  ldb $FF46  ------>  Read(): pop the ring           (4K bytes)                  |
+                                                                                 |  GPIO 13
+  stb $FF46  ------>  Write(): push onto     --->  Pump(), in the          --->  UART1 RX
+                      the transmit ring            background loop:            GPIO 33
+                      (1K bytes)                   ring -> UART0 FIFO        GPIO 12
+\end{exsmall}
+\end{minipage}\par\vspace{0.6ex}
+
+
+Core~1 answers every bus cycle of the 6309, with interrupts off, and must
+never wait. So it touches only two rings in memory, never the UART. The
+UART's own buffers hold only 32 bytes, which at 921{,}600 baud is about
+350~microseconds; core~0's background loop can be busy longer than that,
+sending the console or a disk sector to the tether over USB. So the UART's
+receive interrupt, on core~0, empties the UART into a 4K receive ring as
+bytes arrive, and nothing is lost. Sending has no such hurry, and the
+background loop moves bytes from the transmit ring to the UART when it
+comes round.
+
+Reading \file{\$FF46} when nothing is waiting gives \file{\$FF}, and
+counts an ``empty read''; a correct program checks \file{\$FF45} first.
+
+\subsection{Watching the link}
+
+At the \texttt{TCL>} prompt, before an OS boots:
+\begin{ex}
+TCL> \textbf{fujinet}
+FujiNet says it is 2026-10-17 18:46:20
+TCL> \textbf{fujinet stats}
+rx 6 tx 1 rx_drops 0 tx_drops 0 overruns 0 empty_reads 0
+\end{ex}
+\cmd{fujinet} sends the DriveWire \texttt{OP\_TIME} request and prints the
+FujiNet's answer, which proves both wires and the baud rate. While NitrOS-9
+runs, the firmware's statistics in the tether's log, \file{v4/\_log},
+include a line every ten seconds with the byte counts and the last 32
+bytes on the wire, \texttt{>} for bytes to the FujiNet and \texttt{<}
+for bytes from it:
+\begin{exsmall}
+FujiNet: 12666 out, 97015 in, 0 lost, 0 empty reads; last: >e3 >01 >52 >00 >07 >e3 ...
+\end{exsmall}
+\rp{info}{1} shows the same counts in its hardware report.
+
+\subsection{Booting from the FujiNet}
+
+The firmware holds two copies of NitrOS-9's boot track. \cmd{l2} starts the
+one whose \file{Boot} module reads \file{OS9Boot} from EmuDsk, the
+tether's disk. \cmd{l2fn} starts the one whose \file{Boot} module,
+\file{boot\_dw}, reads it from DriveWire drive~0---the FujiNet's first
+device slot. When the FujiNet powers up, it puts its own CONFIG disk in
+that slot, so \cmd{l2fn} first mounts whatever the slot names, with the
+FujiNet's own commands (\texttt{FUJI\$MountHost}, then
+\texttt{FUJI\$MountImage}; see ``Programming the FujiNet''):
+\begin{ex}
+TCL> \textbf{l2fn}
+FujiNet slot 1: level2-fn.dsk
+...
+NitrOS-9 Level 2 on the TFR/911H
+\end{ex}
+The \file{OS9Boot} on that disk makes \file{/X0} the system disk,
+\file{/DD}. The tether's disk is still there, as \file{/H0}.
+\rp{fujinet}{4} tells how to make such a disk and put it on the FujiNet.
+
+\section{DriveWire}
+
+DriveWire, from Cloud-9, is the protocol a Color Computer uses to reach a
+DriveWire server on another computer: a serial line, and \emph{transactions} that each begin with a
+one-byte opcode from the CoCo. The CoCo always asks and the server answers;
+the server never speaks first. These are the transactions the TFR/911H
+uses:
+
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Opcode} & \textbf{Name} & \textbf{What it does}\\
+\midrule
+\file{\$D2} & \texttt{OP\_READEX} & Read a sector: drive and 24-bit LSN out; 256 bytes back; a checksum out; a status byte back\\
+\file{\$F2} & \texttt{OP\_REREADEX} & The same, after a checksum error\\
+\file{\$57} & \texttt{OP\_WRITE} & Write a sector: drive, LSN, 256 bytes and a checksum out; a status byte back\\
+\file{\$23} & \texttt{OP\_TIME} & Six bytes back: year since 1900, month, day, hour, minute, second\\
+\file{\$5A} & \texttt{OP\_DWINIT} & The driver's version byte out; the server's version byte back\\
+\file{\$45} & \texttt{OP\_SERINIT} & Open a virtual channel (\file{/N1} is channel~1)\\
+\file{\$C4} & \texttt{OP\_SERSETSTAT} & A SetStat on a virtual channel: \texttt{SS.Open}, \texttt{SS.ComSt} (with 26 bytes of path options), \ldots\\
+\file{\$E2} & \texttt{OP\_FUJI} & A FujiNet management command (below)\\
+\file{\$E3} & \texttt{OP\_FUJINET} & A FujiNet network-device command (below)\\
+\bottomrule
+\end{tabularx}
+
+Reading a sector looks like this on the wire (the numbers are an
+example). The checksum is the sum of
+the 256 bytes, as a 16-bit number; if the server's sum differs, it answers
+\texttt{E\$CRC} and the driver asks again with \texttt{OP\_REREADEX}:
+\begin{exsmall}
+  6309 -> FujiNet:   D2  00  00 00 3C              OP_READEX, drive 0, LSN $00003C
+  FujiNet -> 6309:   ... 256 bytes of sector $3C ...
+  6309 -> FujiNet:   7A 41                         the checksum it computed
+  FujiNet -> 6309:   00                            status: no error
+\end{exsmall}
+
+The FujiNet adds two opcodes of its own, \file{\$E2} and \file{\$E3},
+which are how programs reach its management functions and its network
+devices. Their replies come back as raw bytes, outside DriveWire's
+virtual-channel framing.
+
+A DriveWire link has no framing or resynchronization: both ends must agree
+on the length of every transaction. A server that reads one byte too few
+takes the next byte for an opcode, and both ends are lost. That is what
+happened before the FujiNet's firmware was fixed to read the version byte
+after \texttt{OP\_DWINIT}: it took that byte for an opcode, threw away the
+\texttt{OP\_SERINIT} and \texttt{OP\_SERSETSTAT} already waiting behind it,
+and the 6309 waited for a reply that never came. On a real CoCo's slower
+link the next command had not yet arrived, and survived.
+
+\section{The FujiNet in NitrOS-9}
+
+\subsection{The modules}
+
+NitrOS-9 has had DriveWire drivers for years. The FujiNet uses them, and
+adds a way for programs to send the FujiNet's own commands:
+
+\par\vspace{0.6ex}\noindent\begin{minipage}{\linewidth}
+\begin{exsmall}
+   fnweather   fnconfig   fnstatus ...          dir /x1   copy   ...     (programs)
+        |  I$SetStt SS.Fuji on /N1                    |  I$Read, I$Write
+        v                                             v
+   SCF  --->  scdwv    /N, /N1-/N5               RBF  --->  rbdw    /X0-/X3, /DD
+                  \                                         /
+                   +----------->   dwio   <----------------+
+                            DWInit  DWRead  DWWrite
+                                     |
+                       becker port $FF45/$FF46 (the RP2350B)
+                                     |
+                       FujiNet: disks, network, clock
+\end{exsmall}
+\end{minipage}\par\vspace{0.6ex}
+
+
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.25in}X@{}}
+\toprule
+\textbf{Module} & \textbf{What it does}\\
+\midrule
+\file{dwio} & DriveWire's wire routines: \texttt{DWInit}, \texttt{DWRead},
+and \texttt{DWWrite}, reached through the system variable
+\texttt{D.DWSubAddr}. Built with \texttt{BECKER=1} and
+\texttt{BECKBASE=\$FF45}, so they poll the becker port; and with
+\texttt{DWIO\_NO\_VIRQ=1} (see below).\\
+\file{rbdw} & The RBF driver for DriveWire disks.\\
+\file{X0}--\file{X3} & Its descriptors, drives 0--3 (the FujiNet's
+device slots 1--4). \file{DD}, booting from the FujiNet, is drive~0 too.\\
+\file{scdwv} & The SCF driver for DriveWire's virtual channels, with the
+\texttt{SS.Fuji} SetStat for FujiNet commands.\\
+\file{N}, \file{N1}--\file{N5} & Its descriptors: channels 1--5, and
+\file{/N}, the wildcard. The FujiNet commands use \file{/N1}.\\
+\file{boot\_dw} & For \cmd{l2fn}: the \file{Boot} module that loads
+\file{OS9Boot} from drive~0, with its own copy of the wire routines.\\
+\bottomrule
+\end{tabularx}
+
+The source of \file{scdwv} and \file{dwio}, the FujiNet's definitions in
+\file{drivewire.d}, the libraries, and the commands are in
+\file{v4/nitros9-l2/fujinet}; the rest come from the NitrOS-9 tree.
+
+\subsection{Synchronous, with interrupts masked}
+
+Every DriveWire exchange in NitrOS-9 is synchronous: the driver masks the
+6309's interrupts, writes its request, and polls for each byte of the
+reply. Nothing else can use the wire meanwhile, so no one else's bytes
+are taken for yours. The cost is that the clock and the keyboard wait too:
+a request that keeps the FujiNet busy for a second stops NitrOS-9 for a
+second.
+
+DriveWire's \emph{virtual-serial poller} breaks this rule. In a normal
+DriveWire system \file{dwio} installs a routine on the 60~Hz clock that
+asks the server, between other work, whether a virtual channel has data
+(\texttt{OP\_SERREAD}). The FujiNet's replies are raw bytes, not channel
+data, and a poll between a request and its reply would take them. So
+\file{dwio} is built with \texttt{DWIO\_NO\_VIRQ=1}, which leaves the
+poller out. \file{/N1} still opens and closes, but programs talk through
+it only with \texttt{SS.Fuji}.
+
+\subsection{Level 1 and Level 2}
+
+Like most of NitrOS-9, the FujiNet code is written once for both levels:
+its sources live in the Level~1 directories of the NitrOS-9 tree, and
+conditional assembly on \texttt{Level} picks what differs. The commands
+and libraries are the same source for both, linked with the system
+definitions for one level or the other. The drivers differ in how they
+reach memory:
+
+\begin{description}\setlength{\itemsep}{0.5ex}
+\item[\sans{Level 1}] has one 64K address space. \file{scdwv}'s
+\texttt{SS.Fuji} hands the caller's request buffer straight to
+\texttt{DWWrite}, and has \texttt{DWRead} put the reply straight into the
+caller's reply buffer.
+
+\item[\sans{Level 2}] gives each process its own address space, which the
+driver, running in the system's address space, cannot address. So
+\texttt{SS.Fuji} takes a 512-byte buffer from system memory
+(\texttt{F\$SRqMem}), copies the request into it from the caller's task
+with \texttt{F\$Move}, makes the exchange from that buffer, copies the
+reply back to the caller's task with \texttt{F\$Move}, and returns the
+buffer (\texttt{F\$SRtMem}).
+\end{description}
+
+On the TFR/911H, Level~1 is TurbOS, a 64K image in the firmware with no
+disk or DriveWire modules, so the FujiNet is a Level~2 feature here. The
+same Level~1 code runs elsewhere: the \file{dillera/nitros9} tree, where
+it was written, has a Level~1 recipe that boots a Wildbits Jr2 from a
+FujiNet over its UART.
+
+\section{Programming the FujiNet}
+
+A program reaches the FujiNet by opening \file{/N1} and making
+\texttt{SS.Fuji} SetStat calls on the path. Each call is one complete
+exchange: a request sent, and a reply of a known length read back. Two
+libraries build the requests, one for the FujiNet's management commands
+and one for its network devices. They are in \file{fujinet/lib}, in
+\file{v4/nitros9-l2}.
+
+\subsection{The SS.Fuji call}
+
+\begin{keys}[1.05in]
+\texttt{A} & The path to \file{/N1}.\\
+\texttt{B} & \texttt{SS.Fuji} (\file{\$E2}).\\
+\texttt{X} & A parameter block: the length of the reply wanted (two bytes,
+high byte first), then the request.\\
+\texttt{Y} & The length of the parameter block: 2 plus the request's
+length.\\
+\texttt{U} & Where the reply goes. Not used if the reply length is 0.\\
+\end{keys}
+The request and the reply may each be up to 512 bytes
+(\texttt{FUJI\$MaxTran}). On success the carry is clear. Because a program
+keeps its data pointer in \texttt{U}, save it around the call, as the
+libraries do:
+\begin{exsmall}
+* Ask the FujiNet for the status of the last management command: send
+* [OP_FUJI, FUJI$GetError] and read one byte back into fbstat.
+FBErr               pshs      a,x,y,u
+                    leax      fbsmall,u
+                    ldd       #1                  one byte of reply wanted
+                    std       ,x
+                    ldd       #OP_FUJI*256+FUJI$GetError
+                    std       2,x                 the request: two bytes
+                    ldy       #4                  2 + the request
+                    lda       fbpath,u            the path to /N1
+                    ldb       #SS.Fuji
+                    pshs      u
+                    leau      fbstat,u            the reply goes here
+                    os9       I$SetStt
+                    puls      u
+\end{exsmall}
+
+Ask for exactly as many bytes as the command sends back. If you ask for
+more, the 6309 waits for bytes that will never come---with interrupts
+masked---and only a reset ends the wait.
+
+\subsection{Management commands}
+
+A management command is \texttt{OP\_FUJI} (\file{\$E2}), a command byte,
+and its parameters. The FujiNet carries it out and keeps the outcome; the
+program then asks for the outcome with \texttt{FUJI\$GetError}, which
+returns \file{\$01} if it worked, and for any data with
+\texttt{FUJI\$GetResponse}. \file{lib/fuji.as} does this:
+
+\begin{keys}[1.05in]
+\texttt{NOpen} & Open \file{/N1}; keep the path.\\
+\texttt{FBReady} & Ask until the FujiNet says it is ready
+(\texttt{FUJI\$Ready}).\\
+\texttt{FBCmd} & Send a command, then fetch its outcome; carry set if it
+failed.\\
+\texttt{FBErr} & Fetch the outcome of the last command.\\
+\texttt{FBRead} & Fetch the data of the last command.\\
+\end{keys}
+
+The commands are defined in \file{fujinet/defs/drivewire.d}:
+
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Byte} & \textbf{Name} & \textbf{What it does}\\
+\midrule
+\file{\$E8} & \texttt{FUJI\$GetAdapterCfg} & The adapter's settings: SSID, host name, IP, gateway, netmask, DNS, MAC, firmware version (140 bytes)\\
+\file{\$FA} & \texttt{FUJI\$GetWifiStatus} & Whether the WiFi is connected\\
+\file{\$FD}, \file{\$FC} & \texttt{FUJI\$ScanNetworks}, \texttt{GetScanResult} & Scan for WiFi networks; one result\\
+\file{\$FE}, \file{\$FB} & \texttt{FUJI\$GetSSID}, \texttt{SetSSID} & The WiFi network and password\\
+\file{\$F4}, \file{\$F3} & \texttt{FUJI\$ReadHostSlots}, \texttt{WriteHostSlots} & The eight host slots, 32 bytes each\\
+\file{\$F9}, \file{\$E6} & \texttt{FUJI\$MountHost}, \texttt{UnmountHost} & Connect to a host, or stop\\
+\file{\$F7}, \file{\$F6}, \file{\$F5} & \texttt{FUJI\$OpenDir}, \texttt{ReadDirEntry}, \texttt{CloseDir} & List a directory on a host\\
+\file{\$F2}, \file{\$F1} & \texttt{FUJI\$ReadDevSlots}, \texttt{WriteDevSlots} & The device slots: host slot, mode, and a 36-byte file name each\\
+\file{\$E2}, \file{\$DA} & \texttt{FUJI\$SetDevicePath}, \texttt{GetDevicePath} & One device slot's image\\
+\file{\$F8}, \file{\$E9} & \texttt{FUJI\$MountImage}, \texttt{UnmountImage} & Mount or eject a device slot's image\\
+\file{\$E7} & \texttt{FUJI\$NewDisk} & Make a new, empty disk image\\
+\file{\$02}, \file{\$01} & \texttt{FUJI\$GetError}, \texttt{GetResponse} & The outcome, and the data, of the last command\\
+\file{\$00} & \texttt{FUJI\$Ready} & One byte back, nonzero when the FujiNet is ready\\
+\bottomrule
+\end{tabularx}
+
+All of \cmd{fnstatus} is a page of code. After opening \file{/N1}, it asks
+for the adapter's settings and prints them:
+\begin{exsmall}
+__start             lbsr      NOpen               open /N1
+                    lbcs      errex
+                    sta       netpath,u
+                    lbsr      FBReady             wait until the FujiNet answers
+                    lbcs      closeerr
+                    leax      request,u
+                    ldd       #OP_FUJI*256+FUJI$GetAdapterCfg
+                    std       ,x
+                    ldy       #2
+                    lbsr      FBCmd               send it; check the outcome
+                    lbcs      closeerr
+                    leax      config,u
+                    ldy       #ADPCFGSZ           140 bytes of settings
+                    lbsr      FBRead
+                    lbcs      closeerr
+                    ...                           print config+CFGVER, config+CFGHOST, ...
+\end{exsmall}
+
+\subsection{The network device}
+
+The FujiNet's network devices (its \texttt{N:} devices) fetch from the
+network for the computer. A network command is \texttt{OP\_FUJINET}
+(\file{\$E3}), a unit number (\file{fnnet} uses unit~1), a command byte, two
+parameter bytes, and, for some commands, a 256-byte \emph{device spec},
+padded with zeros:
+
+\par\vspace{0.6ex}\noindent\begin{minipage}{\linewidth}
+\begin{exsmall}
+   E3  01  'O'  04  00   N:https://api.open-meteo.com/v1/forecast?latitude=...  00 00 ...
+   |   |    |   |   |    '--------------- device spec, 256 bytes -------------------'
+   |   |    |   |   '-- translation: 0, none
+   |   |    |   '------ mode: 4, read
+   |   |    '---------- command: open
+   |   '--------------- unit 1
+   '------------------- OP_FUJINET
+\end{exsmall}
+\end{minipage}\par\vspace{0.6ex}
+
+
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Command} & \textbf{Parameters} & \textbf{What it does}\\
+\midrule
+\texttt{'O'} & mode, translation; spec & Open the URL in the spec. Mode 4 is read, for HTTP GET\\
+\file{\$FC} & 1, 0 & Channel mode: 1 makes the device parse what it fetched as JSON\\
+\texttt{'P'} & & Parse: fetch the URL, and parse the JSON\\
+\texttt{'Q'} & ; spec & Query: the spec is a path into the JSON, such as \texttt{/current/temperature\_2m}\\
+\texttt{'R'} & length (2) & Read up to \var{length} bytes of the open device---after \texttt{'Q'}, the value\\
+\texttt{'S'} & & Status: bytes waiting, connected, and the last error\\
+\texttt{'C'} & & Close\\
+\file{\$02} & & The outcome of the last command, one byte: \file{\$01} if it worked\\
+\file{\$01} & length (2) & The data of the last read, padded with zeros to \var{length}\\
+\bottomrule
+\end{tabularx}
+
+The device does more than this---writing, and other protocols in the
+spec, such as TCP, UDP, FTP, TNFS, and SSH---but HTTP and JSON are what
+\file{lib/fnnet.as} provides:
+
+\begin{keys}[1.05in]
+\texttt{FNNetInit} & Open \file{/N1}, and give the FujiNet a moment.\\
+\texttt{FNNetOpen} & Open the URL at \texttt{X} (up to 255 characters,
+beginning \texttt{N:}).\\
+\texttt{FNNetParse} & Select JSON mode and parse what the URL returns,
+then wait ten seconds, since an HTTPS request can take the ESP32
+several, before the first query.\\
+\texttt{FNNetQuery} & Look up the JSON path at \texttt{X}; put the value,
+as text, at \texttt{Y}, at most \texttt{B} bytes with its terminating
+zero.\\
+\texttt{FNNetClose} & Close the device.\\
+\end{keys}
+
+So fetching one value from a web service is four calls:
+\begin{exsmall}
+                    lbsr      FNNetInit           once, at the start: open /N1
+                    leax      url,pcr
+                    lbsr      FNNetOpen
+                    lbsr      FNNetParse
+                    leax      query,pcr           "/city"
+                    leay      city,u              33 bytes, in the program's data
+                    ldb       #33
+                    lbsr      FNNetQuery          city now holds "Philadelphia"
+                    lbsr      FNNetClose
+   ...
+url                 fcn       "N:http://ip-api.com/json/?fields=status,city"
+query               fcn       "/city"
+\end{exsmall}
+(Check the carry after each call; the real programs do.)
+
+\subsection{Building a program}
+
+The FujiNet programs are LWASM object files, linked with LWLINK into OS-9
+modules. A program has three sections: \texttt{\_\_os9}, with its module
+type, edition and stack size; \texttt{bss}, its variables, which the
+linker puts in the process's data area, reached through \texttt{U}; and
+\texttt{code}. Execution starts at \texttt{\_\_start}. The build links each
+one with the libraries:
+\begin{exsmall}
+$ lwasm --6309 --format=obj -DANSI=1 -Ifujinet/lib -Ifujinet/defs -I$(NITROS9_DIR)/defs \textbackslash{}
+      -o build/fn/fnhello.o fujinet/cmds/fnhello.as
+$ cd build/fn && lwlink --format=os9 -o fnhello fnhello.o fnnet.o fuji.o ../sys.o ../alib.a
+\end{exsmall}
+The Makefile in \file{v4/nitros9-l2} does this for every file in
+\file{fujinet/cmds}: put \file{fnhello.as} there, type \type{make}, and
+\cmd{fnhello} is in \file{/DD/CMDS} on the new disk (\type{make install}
+puts it on yours). \file{alib} gives you \texttt{PRINTS}, \texttt{PUTS},
+\texttt{DEC\_BIN}, and NitrOS-9's other assembly-language helpers.
+
+\section{An Example: fnweather}
+
+\cmd{fnweather} (\file{fujinet/cmds/fnweather.as}, 1{,}213 lines)
+finds where you are from your network's public address, and shows the
+weather there. It uses two free web services, neither of which needs a key:
+\texttt{ip-api.com} for the location, and Open-Meteo for the weather.
+
+\subsection{The plan}
+
+\begin{enumerate}\setlength{\itemsep}{0pt}
+\item Put the terminal in raw mode, and open \file{/N1} (\texttt{FNNetInit}).
+\item \emph{Locate}: fetch \texttt{ip-api.com}, and query the city, region,
+country, latitude, and longitude.
+\item Choose Fahrenheit and miles in the United States, Liberia, and
+Myanmar, Celsius and kilometres elsewhere.
+\item \emph{Fetch}: build an Open-Meteo URL from the latitude and
+longitude, and query the conditions---twice, since one URL with every
+field would not fit in the 256-byte device spec.
+\item Draw the screen, and wait for a key: \key{R} fetches again, \key{U}
+changes the units, \key{L} locates again, \key{Q} quits.
+\end{enumerate}
+
+\subsection{Locating}
+
+The location request names only the fields it wants, so the reply is
+short:
+\begin{exsmall}
+ipURL     fcn   "N:http://ip-api.com/json/?fields=status,city,regionName,countryCode,lon,lat"
+\end{exsmall}
+and the answer is a small JSON object, for example:
+\begin{exsmall}
+\{"status":"success","countryCode":"US","regionName":"Pennsylvania",
+ "city":"Philadelphia","lat":39.98,"lon":-75.23\}
+\end{exsmall}
+\texttt{FetchLocation} opens it, parses it, checks that \texttt{/status}
+is \texttt{success}, and copies each field into a buffer of its own:
+\par\vspace{0.6ex}\noindent\begin{minipage}{\linewidth}
+\begin{exsmall}
+FetchLocation       ...
+                    leax      ipURL,pcr
+                    lbsr      FNNetOpen
+                    lbcs      FetchAbort
+                    lbsr      FNNetParse
+                    lbcs      FetchAbort
+                    leax      qStatus,pcr         "/status"
+                    leay      linebuf,u
+                    ldb       #16
+                    lbsr      FNNetQuery
+                    lbcs      FetchAbort
+                    leax      linebuf,u
+                    leay      success,pcr         "success"
+                    lbsr      StrEqual
+                    bne       FetchLocationBad
+                    leax      qCity,pcr           "/city"
+                    leay      city,u
+                    ldb       #33
+                    lbsr      FNNetQuery
+                    ...                           /regionName, /countryCode, /lat, /lon
+                    lbsr      FNNetClose
+                    rts
+\end{exsmall}
+\end{minipage}\par\vspace{0.6ex}
+
+The values arrive as text, just as they appear in the JSON: the latitude is
+the string \texttt{39.98}, ready to be put into the next URL.
+
+\subsection{Fetching the weather}
+
+\texttt{BuildWeatherURL} joins the pieces in a 256-byte buffer:
+\par\vspace{0.6ex}\noindent\begin{minipage}{\linewidth}
+\begin{exsmall}
+meteoHead      fcn  "N:https://api.open-meteo.com/v1/forecast?latitude="
+meteoLongitude fcn  "&longitude="
+currentTail1   fcn  "&timezone=auto&forecast_days=1&current=temperature_2m,
+                     apparent_temperature,relative_humidity_2m,weather_code"
+imperialTemp   fcn  "&temperature_unit=fahrenheit"
+
+BuildWeatherURL     pshs      x                   X = the tail to end with
+                    leay      urlbuf,u
+                    leax      meteoHead,pcr
+                    lbsr      CopyZAdvance        copy, leaving Y at the end
+                    leax      latitude,u
+                    lbsr      CopyZAdvance
+                    leax      meteoLongitude,pcr
+                    lbsr      CopyZAdvance
+                    leax      longitude,u
+                    lbsr      CopyZAdvance
+                    puls      x
+                    lbsr      CopyZAdvance
+                    clr       ,y
+                    rts
+\end{exsmall}
+\end{minipage}\par\vspace{0.6ex}
+
+then \texttt{FetchCurrentOne} opens it, parses it, and queries five
+values under \texttt{/current}: the time, \texttt{temperature\_2m},
+\texttt{apparent\_temperature}, \texttt{relative\_humidity\_2m}, and
+\texttt{weather\_code}. A second URL asks for the pressure and the wind.
+
+Here is one of those queries on the wire, from the TFR/911H's log: the
+wind direction. After the query (\texttt{'Q'}, \file{\$51}, with its
+path), the program reads up to seven bytes of the value, fetches them,
+closes the device, and checks the outcome:
+\begin{exsmall}
+>e3 >01 >52 >00 >07                  'R': read, up to 7 bytes
+>e3 >01 >01 >00 >07                  $01: the data, 7 bytes
+<33 <34 <31 <0a <00 <00 <00          "341", a line feed, and padding
+>e3 >01 >43 >00 >00                  'C': close
+>e3 >01 >02 >00 >00                  $02: the outcome?
+<01                                  $01: it worked
+\end{exsmall}
+\texttt{FNNetQuery} copies the value up to the line feed, so the program
+has the string \texttt{341}, which \texttt{WindDirection} turns into a
+compass point with \texttt{DEC\_BIN} and a few comparisons: 341~degrees
+is north.
+
+\subsection{Turning numbers into words}
+
+Open-Meteo gives the sky as a WMO weather code. \texttt{WeatherDescription}
+turns it into words the same way:
+\begin{exsmall}
+WeatherDescription  lbsr      DEC_BIN             the code, as text, into D
+                    bcs       DescUnknown
+                    cmpd      #0
+                    beq       DescClear           "Clear sky"
+                    cmpd      #1
+                    beq       DescMainly          "Mainly clear"
+                    ...
+                    cmpd      #58
+                    blo       DescDrizzle         51-57: "Drizzle"
+                    ...
+\end{exsmall}
+
+\subsection{The screen}
+
+\cmd{fnweather} reads keys one at a time, without echo: it copies its
+standard input's path options with \texttt{SS.Opt}, turns off echo, auto
+line feed, and paging (\texttt{PD.EKO}, \texttt{PD.ALF}, \texttt{PD.PAU}),
+and puts them back when it ends. It draws with a handful of
+routines: clear the screen, move the cursor (\texttt{TAt}, column in
+\texttt{A} and row in \texttt{B}), cursor on and off, and reverse video.
+For a Color Computer~3 window they send its control codes; built with
+\texttt{ANSI=1}, as on the TFR/911H, they come from
+\file{fujinet/lib/fnansi.as} and send ANSI sequences to the tether's
+terminal instead. The rest of the program does not know the difference.
+
+\subsection{Writing your own}
+
+Any web service that answers a GET request with JSON can be used the same
+way: build the URL, open it, parse it, query the fields you want, close
+it. Some things to remember:
+
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item A device spec, with its \texttt{N:} and its URL, is at most 255
+characters. Ask the service for only the fields you need, as
+\cmd{fnweather} does; split the request in two if you must.
+\item A query's value is text, as it appears in the JSON. Give
+\texttt{FNNetQuery} a buffer big enough for the longest value, with its
+zero.
+\item An array element is a path too: \texttt{/daily/time/0} is the first
+element of \texttt{daily.time}.
+\item Each exchange stops NitrOS-9 while it runs, and each
+\texttt{FNNetParse} takes ten seconds. Fetch when the user asks, not in a
+loop.
+\item Close what you open, even when a query fails, as
+\texttt{FetchAbort} does; a device left open keeps the FujiNet's
+connection, and the next program's replies may not be what it expects.
+\end{itemize}
+
+\cmd{fnconfig} is the other large example: the management commands for
+hosts, device slots, directories, and WiFi, behind a full-screen
+interface.
+
+\section{Programs in C}
+
+Many of the FujiNet's programs for other computers are written in C,
+against \emph{fujinet-lib}, the FujiNet's C library, which has the same
+calls on every computer. Those for the Color Computer are compiled with
+CMOC, which compiles for OS-9 too. \file{fujinet/c}, in
+\file{v4/nitros9-l2}, has the calls of fujinet-lib that such programs use,
+made for NitrOS-9, and a terminal to draw on. With them, two of the Color
+Computer's programs became NitrOS-9 commands, their logic unchanged:
+\rp{fnnews}{1}, from \texttt{fujinet-news}, and \rp{fnstocks}{1}, from
+\texttt{fujinet-stocks}.
+
+\subsection{fujinet-lib for NitrOS-9}
+
+\file{fujinet.c} makes each call out of \texttt{SS.Fuji} exchanges on
+\file{/N1}, the ones \file{fnnet.as} and \file{fuji.as} make:
+
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.45in}>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Call} & \textbf{On the wire}\\
+\midrule
+\texttt{network\_open} & \texttt{'O'} with the spec, then \file{\$02}\\
+\texttt{network\_status} & \texttt{'S'}, then \file{\$01} for four bytes: the bytes waiting (high byte first), whether it is connected, and the last error (1 for none, 136 at the end)\\
+\texttt{network\_read} & \texttt{'S'}, then \texttt{'R'} and \file{\$01} for what is waiting, at most 480 bytes at a time, until it has the length asked for or the end\\
+\texttt{network\_json\_parse} & \file{\$FC} with 1, and \texttt{'P'}, each followed by \file{\$02}\\
+\texttt{network\_json\_query} & \texttt{'Q'} with the path, then \texttt{'R'} and \file{\$01} for 64 bytes; the value ends at the first zero, carriage return, or line feed\\
+\texttt{network\_close} & \texttt{'C'}, then \file{\$02}\\
+\texttt{fuji\_read\_appkey}, \texttt{fuji\_write\_appkey} & \file{\$DC} to open an \emph{app key}, then \file{\$DD} to read it or \file{\$DE} to write it: up to 64 bytes that the FujiNet keeps on its SD card for a program\\
+\bottomrule
+\end{tabularx}
+
+One thing is done differently from \file{fnnet.as}:
+\texttt{network\_json\_parse} asks for the outcome of \texttt{'P'} at
+once, instead of sleeping ten seconds first. The FujiNet does not read the
+question until it has fetched and parsed the document, and the becker
+port has no timeout, so the call takes as long as the fetch and no longer.
+NitrOS-9 stops while it waits.
+
+These are the four calls of the last section, in C:
+\begin{exsmall}
+#include "fujinet-network.h"
+
+char city[NETWORK_JSON_QUERY_MAX];
+char url[] = "N:http://ip-api.com/json/?fields=status,city";
+
+if (network_open(url, OPEN_MODE_HTTP_GET, OPEN_TRANS_NONE) == FN_ERR_OK
+    && network_json_parse(url) == FN_ERR_OK)
+    network_json_query(url, "/city", city);       /* "Philadelphia" */
+network_close(url);
+\end{exsmall}
+
+\subsection{The terminal}
+
+The Color Computer's programs draw on its screen: \texttt{printf} at the
+cursor, and reverse video for the line that is selected, made by flipping
+the attribute bytes of a row in screen memory. \file{term.c} draws the same
+things on the tether's terminal with ANSI sequences. It keeps a copy of the
+screen, a byte for each place, with bit~7 set where it is in reverse video,
+so that \texttt{term\_invert\_row} can flip a row and send it again. It
+reads keys raw from \file{/term}, sets bit~7 of \file{\$FF42}, as
+\rp{vi}{1} does, so that the arrow keys arrive as the tether sends them,
+and takes \key{Esc}, and \key{Ctrl/C}, which arrives as a signal, as the
+Color Computer's \key{BREAK}.
+
+\subsection{The two programs}
+
+\cmd{fnnews} is the Color Computer client of \texttt{fujinet-news}. Its
+topics, pages of headlines, and pages of a story are the same state
+machines as on the CoCo, laid out as on a CoCo~3's 80-column screen. The
+news server formats each page to fit; the program puts the screen's width
+and height in the URL:
+\begin{exsmall}
+N:HTTPS://FUJINET.ONLINE/8bitnews/news.php?t=lf&ps=80x21&l=6&p=1&c=top
+\end{exsmall}
+The CoCo's screen code, \file{cocotext.c} and \file{bar.c}, became
+\file{fujinet/news/screen.c}, a page of calls to \file{term.c}.
+
+\cmd{fnstocks} is \texttt{fujinet-stocks}, written for many computers at
+once: its own code calls the \texttt{conio} routines and the C library,
+and each computer has a directory of headers and routines that provide
+them. NitrOS-9 has one, \file{os9}, beside \file{coco}. Its \file{conio.h}
+sends \texttt{gotoxy}, \texttt{revers}, \texttt{cputs}, and the rest to
+\file{term.c}; its \file{time.h} makes \texttt{clock} from
+\texttt{F\$Time}. Of the program's own files, a few lines changed: an
+80-column screen, \key{Esc} as the name of \key{BREAK}, and the ticker
+drawn only when it moves, since on a terminal each row drawn goes down the
+wire. The stock list is kept in two app keys of creator \file{\$0901}, the
+ones the other computers' versions use, so a FujiNet shared between
+computers has one list.
+
+\subsection{Building and testing}
+
+The Makefile compiles each C file with \texttt{cmoc --os9 -c}, and links
+each program with the two files of \file{fujinet/c}:
+\begin{exsmall}
+$ cmoc --os9 --function-stack=0 --add-os9-stack-space=2048 -DBUILD_OS9 -Ifujinet/c \textbackslash{}
+      -c -o build/fn/news/main.o fujinet/news/main.c
+$ cd build/fn && cmoc --os9 -o fnnews news/*.o c/term.o c/fujinet.o
+\end{exsmall}
+The stack space is set when the file with \texttt{main} is compiled; given
+when linking, it is ignored, and the program has no room for its stack.
+CMOC's OS-9 programs keep their stack above their variables, in the same
+data area. And \texttt{term\_printf} does its own formatting, because
+CMOC's \texttt{vsprintf} does not work in an OS-9 program (in version
+0.1.97 it writes to standard output, and the stack then overflows);
+\texttt{printf} and \texttt{sprintf} do.
+\type{make build/fnnews-host} and \type{make build/fnstocks-host} build
+them for the computer the tether runs on, with \file{fujinet-host.c} in
+place of \file{fujinet.c}: \cmd{curl} fetches, \cmd{python3} answers the
+JSON queries, and app keys are files. The screens are the same, so a
+change can be tried there before it goes to the board.
+
+% ═══════════════════════════════════════════════════════════════════
 \chapter{Reference Pages}
 \chapterpages
 \renewcommand{\thesectname}{Reference Pages}
@@ -531,6 +1368,8 @@ beep(1) & Ring the bell\\
 clear(1) & Clear the screen\\
 click(1) & Turn keyclicks on or off\\
 fnconfig(1) & FujiNet CONFIG: the FujiNet's status, hosts, device slots, and WiFi\\
+fnnews(1) & The news, through the FujiNet\\
+fnstocks(1) & Stock quotes, through the FujiNet\\
 fnweather(1) & The weather where you are, through the FujiNet\\
 fujinet(1) & Commands for the FujiNet: \textmd{fnstatus, fnlisthosts, fnlistdevs, fnsetdevfile,} \ldots\\
 grep(1) & Print lines that contain a string\\
@@ -628,6 +1467,80 @@ send ANSI escape sequences instead.
 \rh{See Also} \rp{fujinet}{1}, \rp{fujinet}{4}
 \end{refpage}
 
+\refentry{fnnews}{1}{the news}
+\begin{refpage}
+\rh{Name} \cmd{fnnews} -- the news, through the FujiNet
+\rh{Syntax} \cmd{fnnews}
+\rh{Description}
+The \cmd{fnnews} command reads the news from the FujiNet news server,
+which gathers stories from many sources and formats them to fit the
+screen. It is the Color Computer's news reader, from
+\texttt{fujinet-news} (see Chapter~2). It begins with nine topics: top
+stories, world news, business, science, technology, health,
+entertainment, politics, and sports. \key{Up} and \key{Down} choose one,
+and \key{Enter} shows its headlines, six to a page, newest first, each
+with its time:
+
+\begin{keys}[1in]
+\key{Up}, \key{Down} & Choose a headline; past the first or the last, turn
+the page.\\
+\key{Left}, \key{Right} & The previous or the next page of headlines.\\
+\key{G} & Go to a page, by its number.\\
+\key{Enter} & Read the story.\\
+\key{Esc} & Back to the topics.\\
+\end{keys}
+
+A story is shown a page at a time, its headline at the top and the page
+number at the bottom:
+
+\begin{keys}[1in]
+\key{Up}, \key{Down} & The previous or the next page.\\
+\key{I} & The story's date and source.\\
+\key{Esc} & Back to the headlines.\\
+\end{keys}
+
+\key{Esc} at the topics quits. \key{Ctrl/C} is the same as \key{Esc}.
+\rh{Restrictions}
+Each page is fetched when it is shown, and NitrOS-9 stops while the
+FujiNet fetches it, for a second or two. If a fetch fails, the page is
+empty; going back and choosing it again fetches it again. The screen must be at least 80
+columns by 24 lines.
+\rh{See Also} \rp{fnstocks}{1}, \rp{fnweather}{1}, \rp{fujinet}{4}
+\end{refpage}
+
+\refentry{fnstocks}{1}{stock quotes}
+\begin{refpage}
+\rh{Name} \cmd{fnstocks} -- stock quotes, through the FujiNet
+\rh{Syntax} \cmd{fnstocks}
+\rh{Description}
+The \cmd{fnstocks} command follows up to ten stocks. Their symbols are in
+two columns in the middle of the screen, in alphabetical order, and across
+the top a ticker scrolls each one's price and the day's change. The quotes
+come from Finnhub (\texttt{finnhub.io}), and are fetched again every five
+minutes. The FujiNet keeps the list, in its app keys, from one run to the
+next. \cmd{fnstocks} is \texttt{fujinet-stocks}, which runs on many
+computers (see Chapter~2).
+
+\begin{keys}[1in]
+Arrows, \key{1}--\key{9}, \key{0} & Select a stock; \key{0} is the
+tenth.\\
+\key{E} & Type a symbol into the selected place.\\
+\key{L} & Look up a symbol by a name, or part of one, and put the one
+chosen in the selected place.\\
+\key{D} & Delete the selected stock.\\
+\key{I} & The selected company: its name, exchange, country, industry,
+market capitalization, shares, telephone number, and web site.\\
+\key{R} & Fetch the quotes now.\\
+\key{H}, \key{S} & Hide the list, leaving the ticker; show it again.\\
+\key{Esc} & Quit. \key{Ctrl/C} is the same.\\
+\end{keys}
+\rh{Restrictions}
+Each quote takes about two seconds to fetch, and NitrOS-9 stops while
+the FujiNet fetches it. Finnhub's free quotes may be some minutes old. The
+screen must be at least 80 columns by 24 lines.
+\rh{See Also} \rp{fnnews}{1}, \rp{fnweather}{1}, \rp{fujinet}{4}
+\end{refpage}
+
 \refentry{fnweather}{1}{the weather where you are}
 \begin{refpage}
 \rh{Name} \cmd{fnweather} -- the weather where you are, through the FujiNet
@@ -652,7 +1565,7 @@ of the JSON replies.
 \rh{Restrictions}
 Each request can take several seconds. \cmd{fnweather} shows today's
 conditions, not a forecast.
-\rh{See Also} \rp{fnconfig}{1}, \rp{fujinet}{4}
+\rh{See Also} \rp{fnconfig}{1}, \rp{fnnews}{1}, \rp{fnstocks}{1}, \rp{fujinet}{4}
 \end{refpage}
 
 \refentry{fujinet}{1}{commands for the FujiNet}
@@ -1138,6 +2051,7 @@ $ \textbf{BOOT=l2fn sh run-l2.sh}
 \cmd{make fujinet-disk} copies \file{level2.dsk}, with your files, to
 \file{level2-fn.dsk}, and gives the copy the FujiNet's \file{OS9Boot}.
 The FujiNet's web server offers its SD card by WebDAV at \file{/dav}.
+Chapter~2 describes the FujiNet, the link, and programming it at length.
 \rh{Restrictions}
 At power on, the FujiNet puts its own CONFIG disk in device slot~0; that
 is why \cmd{l2fn} mounts the slot first.
@@ -1659,6 +2573,24 @@ scrolling in 0.15, and replacing 178 strings on 116 lines in 1.8.
 Its report was compared with what NitrOS-9's own \cmd{procs}, \cmd{mdir},
 \cmd{mfree}, and \cmd{free} say, on the board, and with a program running
 in the background.
+
+\section{fnnews and fnstocks}
+
+\begin{itemize}\setlength{\itemsep}{0.3ex}
+\item Built for the Unix computer with \file{fujinet-host.c}, both were
+driven through a pseudo-terminal, against the real news server and
+Finnhub, and every screen read back with a terminal emulator, reverse
+video and all: the topics, headlines, story pages and their information,
+going to a page; stocks added by symbol and by lookup, company
+information, deleting, and the list kept between runs.
+\item \texttt{term\_printf}'s formatting gives what the C library's
+\texttt{printf} gives, for each conversion the programs use.
+\item On the board, through the FujiNet, the same sessions: a page of
+headlines comes in 1.7~seconds, a page of a story in 1.2, and a quote,
+with the list saved, in 2.2. The FujiNet's log shows the app keys read and
+written, as \file{/FujiNet/09010101.key} and \file{09010102.key} on its
+SD card. \cmd{mfree} shows all the memory back afterwards.
+\end{itemize}
 
 \section{The Firmware}
 

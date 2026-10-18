@@ -1,0 +1,51 @@
+// term.h -- the console of the FujiNet C programs: the tether's terminal
+// (ANSI, at least 80 by 24), keys read raw, and a copy of the screen, so
+// that a row can be shown inverted and back again, as the CoCo programs
+// these come from do by flipping the attributes in screen memory.
+
+#ifndef TERM_H
+#define TERM_H
+
+#include "fntypes.h"
+
+#define TERM_COLS 80
+#define TERM_ROWS 24
+
+// The keys, as term_getc() returns them.  The arrows are also ^P ^N ^B ^F.
+#define KEY_UP     0x10
+#define KEY_DOWN   0x0E
+#define KEY_LEFT   0x02
+#define KEY_RIGHT  0x06
+#define KEY_PGUP   0x15     // ^U
+#define KEY_PGDN   0x04     // ^D
+#define KEY_BS     0x08     // Backspace or Delete
+#define KEY_ENTER  0x0D
+#define KEY_BREAK  0x03     // Escape or ^C (or ^E)
+
+void term_init(void);       // raw keys, cursor off, screen cleared
+void term_done(void);       // the terminal as it was, cursor on
+
+void term_putc(char c);     // '\n' is a new line
+void term_puts(const char *s);
+int term_printf(const char *fmt, ...);
+void term_flush(void);
+
+void term_gotoxy(byte x, byte y);
+byte term_wherex(void);
+byte term_wherey(void);
+void term_clrscr(void);
+void term_clreol(void);     // to the end of the row, at the cursor
+void term_reverse(byte on); // what follows is in reverse video
+void term_invert_row(byte y);   // flips row y between normal and reverse
+void term_cursor(byte on);
+void term_bell(void);
+
+byte term_ready(void);      // a key is waiting
+byte term_getc(void);       // waits for a key
+byte term_inkey(void);      // a key, or 0 if none is waiting
+void term_getline(char *buf, byte size);    // edits a line; BREAK leaves it empty
+
+void term_sleep(word ticks);    // sixtieths of a second
+dword term_seconds(void);   // seconds since midnight
+
+#endif // TERM_H
