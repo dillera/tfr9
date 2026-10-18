@@ -1,4 +1,5 @@
-% manual.tex -- TFR/911H NitrOS-9 Reference Pages.
+% manual.tex -- the TFR Manual and Reference: NitrOS-9 Level 2 on the
+% TFR/911H.  Its version is \docversion, below.
 %
 % Set in the manner of Digital Equipment Corporation's ULTRIX reference
 % pages of the early 1990s: Times text, Helvetica headings hung in the
@@ -17,7 +18,15 @@
 \usepackage{xcolor}
 \usepackage{array,tabularx,longtable,booktabs}
 \usepackage{alltt}
-\usepackage[hidelinks,pdftitle={TFR/911H NitrOS-9 Reference Pages},
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+% The manual's version: change it, and add a line to the revision history
+% on the copyright page, with each revision.
+\newcommand{\docversion}{1.0}
+\newcommand{\docdate}{18 October 2026}
+
+\usepackage[hidelinks,pdftitle={TFR Manual and Reference, Version \docversion},
             pdfauthor={The TFR/9 Project}]{hyperref}
 
 \setlength{\parindent}{0pt}
@@ -119,27 +128,70 @@
 \newenvironment{keys}[1][1.1in]{\par\tabularx{\linewidth}[t]{@{}>{\raggedright\arraybackslash}p{#1}>{\raggedright\arraybackslash}X@{}}}%
   {\endtabularx\par}
 
+% ── The cover ──────────────────────────────────────────────────────
+% In the manner of a 1970s manual: cream stock, a few warm inks, Futura,
+% and a band of stripes that steps down the page, carried from one place
+% to another.
+\newfontfamily\coverfont{Futura}[UprightFont={* Medium}, BoldFont={* Bold}]
+\newfontfamily\coverheavy{Futura Condensed ExtraBold}
+\definecolor{cream}{RGB}{243,234,211}
+\definecolor{cbrown}{RGB}{75,46,30}
+\definecolor{crust}{RGB}{180,68,28}
+\definecolor{corange}{RGB}{221,122,36}
+\definecolor{cgold}{RGB}{232,169,51}
+\definecolor{cyellow}{RGB}{242,208,107}
+\newcommand{\coverart}{%
+  \coordinate (O) at (current page.north west);
+  \fill[cream] (current page.south west) rectangle (current page.north east);
+  % the band: five stripes, each turning on the same centres
+  \foreach \d/\c in {0.56/cbrown, 0.28/crust, 0/corange, -0.28/cgold, -0.56/cyellow} {
+    \pgfmathsetmacro\ra{1.5+\d}
+    \pgfmathsetmacro\rb{1.5-\d}
+    \draw[\c, line width=0.29in, line cap=butt]
+      ($(O)+(-0.2,-4.85+\d)$) -- ($(O)+(5.05+\d-\ra,-4.85+\d)$)
+      arc[start angle=90, end angle=0, radius=\ra]
+      -- ($(O)+(5.05+\d,-8.05+\d+\rb)$)
+      arc[start angle=180, end angle=270, radius=\rb]
+      -- ($(O)+(8.8,-8.05+\d)$);
+  }
+  % the title
+  \node[anchor=north west, inner sep=0, text=cbrown,
+    font=\coverheavy\fontsize{168}{168}\selectfont] at ($(O)+(0.78,-0.7)$) {TFR};
+  \node[anchor=north west, inner sep=0, text=cbrown,
+    font=\coverfont\fontsize{30}{30}\selectfont] at ($(O)+(0.86,-2.72)$)
+    {Manual and Reference};
+  \node[anchor=north west, inner sep=0, text=crust,
+    font=\coverfont\fontsize{13}{13}\selectfont] at ($(O)+(0.88,-3.3)$)
+    {NitrOS-9 Level 2 on the TFR/911H};
+  % the foot: the order number, and who
+  \draw[cbrown, line width=1.2pt] ($(O)+(0.85,-9.62)$) -- ($(O)+(7.65,-9.62)$);
+  \node[anchor=north west, inner sep=0, text=cbrown, align=left,
+    font=\coverfont\fontsize{9.5}{12}\selectfont] at ($(O)+(0.85,-9.78)$)
+    {Order No.\ TFR-911H-MR\\Version \docversion, October 2026};
+  \node[anchor=north east, inner sep=0, text=cbrown,
+    font=\coverfont\bfseries\fontsize{15}{15}\selectfont] at ($(O)+(7.65,-9.8)$)
+    {the tfr/9 project};
+}
+
 \begin{document}
 \frontmatter
 \pagestyle{empty}
 
 % ── Title page ─────────────────────────────────────────────────────
 \begin{titlepage}
-\sffamily
-\vspace*{0.9in}
-{\fontsize{30}{36}\selectfont\bfseries TFR/911H NitrOS-9\\[4pt] Reference Pages\par}
-\vspace{10pt}
-{\Large Commands, Special Files, Games, and Maintenance\par}
-\vspace{0.5in}
-{\color{black!75}\hrule height 2pt}
-\vspace{0.3in}
-\begin{tabular}{@{}l@{}}
-\bfseries Order Number: TFR-911H-RP-A
-\end{tabular}
+\noindent\begin{tikzpicture}[remember picture, overlay, x=1in, y=1in]
+  \coverart
+\end{tikzpicture}
+\end{titlepage}
 
-\vspace{0.3in}
+% ── Copyright page ─────────────────────────────────────────────────
+\clearpage
+{\sffamily\bfseries\Large TFR Manual and Reference\par}
+\vspace{2pt}
+{\sffamily NitrOS-9 Level 2 on the TFR/911H: Commands, Special Files, Games,
+Networking, and Maintenance\par}
+\vspace{0.15in}
 \begin{minipage}{0.72\textwidth}
-\rmfamily\normalsize
 This manual describes the commands, games, and tools added to NitrOS-9
 Level 2 on the TFR/911H single board computer, the hardware the TFR/911H
 firmware presents to OS-9, networking with a FujiNet, and how to build and
@@ -147,24 +199,29 @@ maintain the system. It begins with an introduction to OS-9 Level 1 and
 Level 2 as they run on the board.
 \end{minipage}\par\vspace{0.6ex}
 
-\vspace{0.35in}
+\vspace{0.2in}
+{\sffamily
 \begin{tabular}{@{}l l@{}}
-\bfseries Revision/Update Information: & This revision adds Chapter 2, Networking.\\[3pt]
+\bfseries Order Number: & TFR-911H-MR\\[3pt]
+\bfseries Version: & \docversion, \docdate\\[3pt]
+\bfseries Revision/Update Information: & Version \docversion: the new name, the cover, and \rp{fnbounce}{1}.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
-\end{tabular}
-
-\vfill
-{\bfseries\large the tfr/9 project\par}
-{\small github.com/strickyak/tfr9\par}
-\end{titlepage}
-
-% ── Copyright page ─────────────────────────────────────────────────
-\clearpage
+\end{tabular}\par}
 \vspace*{\fill}
 {\small
-\textbf{First Printing, October 2026}\\
-\textbf{Revised, October 2026}
+\textbf{TFR Manual and Reference, Version \docversion, \docdate}
+
+\textbf{Revision history}\\[2pt]
+\begin{tabular}{@{}l l p{3.9in}@{}}
+0.1 & 17 Oct 2026 & First printing, as the \emph{TFR/911H NitrOS-9
+Reference Pages}.\\
+0.2 & 17 Oct 2026 & The FujiNet, and booting NitrOS-9 from it.\\
+0.3 & 18 Oct 2026 & Chapter 2, Networking; \cmd{fnnews} and \cmd{fnstocks}.\\
+0.4 & 18 Oct 2026 & fujinet-lib for NitrOS-9; colors.\\
+1.0 & 18 Oct 2026 & Named the \emph{TFR Manual and Reference}, and
+versioned; the cover; \cmd{fnbounce}; UTF-8 in the tether.\\
+\end{tabular}
 
 The information in this document is subject to change without notice and
 should not be construed as a commitment by anyone in particular. The
@@ -189,7 +246,8 @@ trademarks of Digital Equipment Corporation.
 \medskip
 \textbf{About the design.} This manual is typeset in the manner of
 Digital Equipment Corporation's ULTRIX reference pages of the early 1990s,
-as a tribute. It is not a Digital document, and it has nothing to do with
+as a tribute; its cover, in Futura, in the manner of a manual of the
+1970s. It is not a Digital document, and it has nothing to do with
 Digital Equipment Corporation or its successors.
 
 \medskip
@@ -457,6 +515,7 @@ a \cmd{man} page on the board too: type \type{man} \var{name}.
 \rp{fnweather}{1} & The weather where you are\\
 \rp{fnnews}{1} & The news, from the FujiNet news server\\
 \rp{fnstocks}{1} & Ten stocks, with a ticker\\
+\rp{fnbounce}{1} & Bounce World: shapes that bounce across many computers' screens\\
 \rp{fujinet}{4} & The FujiNet: its wiring, its disks, and booting from it\\
 \rp{tfr911h}{4} & The hardware the firmware emulates\\
 \rp{sn76489}{4} & Programming the sound chip\\
@@ -525,8 +584,8 @@ adapter, how it is wired to the board and what the firmware makes of it,
 the DriveWire protocol that runs between them, how NitrOS-9 uses it, and
 how to write programs that use it. It ends with a walk through
 \cmd{fnweather}, a program that finds where you are and shows the weather
-there, and with two programs in C, \cmd{fnnews} and \cmd{fnstocks}, that
-came from the Color Computer with little change.
+there, and with three programs in C, \cmd{fnnews}, \cmd{fnstocks}, and
+\cmd{fnbounce}, that came from the Color Computer with little change.
 
 \section{The FujiNet}
 
@@ -548,8 +607,8 @@ programs ask the FujiNet to fetch from the network;
 \item a place to boot from: \cmd{l2fn} boots NitrOS-9 from the FujiNet's
 first disk;
 \item commands to manage it, \rp{fujinet}{1} and \rp{fnconfig}{1}, and
-programs that use it: \rp{fnweather}{1}, \rp{fnnews}{1}, and
-\rp{fnstocks}{1}.
+programs that use it: \rp{fnweather}{1}, \rp{fnnews}{1},
+\rp{fnstocks}{1}, and \rp{fnbounce}{1}.
 \end{itemize}
 
 \subsection{The hardware}
@@ -1246,10 +1305,11 @@ against \emph{fujinet-lib}, the FujiNet's C library, which has the same
 calls on every computer. Those for the Color Computer are compiled with
 CMOC, which compiles for OS-9 too. \file{fujinet/fujinet-lib}, in
 \file{v4/nitros9-l2}, is fujinet-lib for NitrOS-9, and \file{fujinet/c}
-is a terminal to draw on. With them, two of the Color Computer's programs
-became NitrOS-9 commands, their logic unchanged:
-\rp{fnnews}{1}, from \texttt{fujinet-news}, and \rp{fnstocks}{1}, from
-\texttt{fujinet-stocks}.
+is a terminal to draw on. With them, three of the Color Computer's
+programs became NitrOS-9 commands, their logic unchanged:
+\rp{fnnews}{1}, from \texttt{fujinet-news}, \rp{fnstocks}{1}, from
+\texttt{fujinet-stocks}, and \rp{fnbounce}{1}, from
+\texttt{bounce-world-client}.
 
 \subsection{fujinet-lib for NitrOS-9}
 
@@ -1326,7 +1386,18 @@ reads keys raw from \file{/term}, sets bit~7 of \file{\$FF42}, as
 and takes \key{Esc}, and \key{Ctrl/C}, which arrives as a signal, as the
 Color Computer's \key{BREAK}.
 
-\subsection{The two programs}
+A program that redraws the screen many times a second, as a CoCo program
+does by drawing on a second screen and then showing it, calls
+\texttt{term\_frame} to start a frame, which is drawn in the copy alone,
+and again to end it, which sends only the places that changed; only the
+rows the frame wrote are compared. A place can hold one of the
+line-drawing and block characters (\texttt{TG\_HLINE} and the rest), which
+\file{term.c} sends as UTF-8. And what it sends goes straight to the
+console's 6850, at \file{\$FF15}, not through SCF, which takes some 300
+microseconds a character: the firmware's 6850 is always ready for another
+character, and holds the 6309 while its buffer to the tether is full.
+
+\subsection{The three programs}
 
 \cmd{fnnews} is the Color Computer client of \texttt{fujinet-news}. Its
 topics, pages of headlines, and pages of a story are the same state
@@ -1355,6 +1426,24 @@ computers. The stock list is kept in two app keys of creator \file{\$0901}, the
 ones the other computers' versions use, so a FujiNet shared between
 computers has one list.
 
+\cmd{fnbounce} is the client of Bounce World, Mark Fisher's
+\texttt{bounce-world-client}, which is written for many computers at once
+too: NitrOS-9's directory, \file{os9}, is beside \file{coco}. A server
+moves shapes about a world made of the screens of all its clients, and
+sends each client, ten times a second over a TCP connection, the shapes on
+its screen. The CoCo draws them on a 42-column screen. Here each place of
+the world is two columns of the terminal, so that a round shape looks
+round; the line-drawing characters keep their vertical strokes in the left
+column and carry their horizontal ones through the right, so that the
+lines still join; or, set on its title screen, the world is 80 places
+wide, a place to a column. The screens before the world---the title, with
+its logo and settings, and the kinds of shape---are NitrOS-9's own
+(\file{os9/title.c}), drawn for an 80-column terminal. Of the program's own
+files, a few lines changed (\texttt{BUILD\_OS9}): the places and a color
+for each kind of shape, calls to those screens, and the main loop, which
+sends the next request before it draws, so that the FujiNet and the
+server are at work while the 6309 draws.
+
 \subsection{Building and testing}
 
 \type{make fujinet-lib} compiles fujinet-lib and puts it in
@@ -1382,6 +1471,10 @@ them for the computer the tether runs on, with
 \file{fujinet/c/host/fujinet-host.c} in place of fujinet-lib: \cmd{curl} fetches, \cmd{python3} answers the
 JSON queries, and app keys are files. The screens are the same, so a
 change can be tried there before it goes to the board.
+\type{make build/fnbounce-host} builds \cmd{fnbounce} the same way, with
+TCP: it is compiled as for CMOC, with stand-ins for CMOC's \file{cmoc.h}
+and \file{coco.h} in \file{fujinet/bounce/host}, so that it takes the
+same paths as on the board, and plays against a real server.
 
 % ═══════════════════════════════════════════════════════════════════
 \chapter{Reference Pages}
@@ -1406,6 +1499,7 @@ This section describes the commands added to NitrOS-9 Level~2 for the TFR/911H. 
 beep(1) & Ring the bell\\
 clear(1) & Clear the screen\\
 click(1) & Turn keyclicks on or off\\
+fnbounce(1) & Bounce World, through the FujiNet\\
 fnconfig(1) & FujiNet CONFIG: the FujiNet's status, hosts, device slots, and WiFi\\
 fnnews(1) & The news, through the FujiNet\\
 fnstocks(1) & Stock quotes, through the FujiNet\\
@@ -1467,6 +1561,66 @@ the same before an OS is booted; see \rp{tcl}{8}.
 \rp{tetris}{6} turns keyclicks off while it runs, and puts them back as
 they were when it ends.
 \rh{See Also} \rp{beep}{1}, \rp{sn76489}{4}, \rp{tfr911h}{4}
+\end{refpage}
+
+\refentry{fnbounce}{1}{Bounce World}
+\begin{refpage}
+\rh{Name} \cmd{fnbounce} -- Bounce World, through the FujiNet
+\rh{Syntax} \cmd{fnbounce}
+\rh{Description}
+The \cmd{fnbounce} command is a client of Bounce World, a world of shapes
+that bounce off one another and off its edges. A server keeps the world,
+which is made of the screens of all its clients side by side, so that a
+shape that leaves one computer's screen comes onto the next one's.
+\cmd{fnbounce} starts with its title screen, which shows its version
+and the day it was built, and where the server, a name, and the width of
+the world are set; the FujiNet keeps them in app keys from one run to the
+next. Then it shows the kinds of shape, and then its part of the world,
+ten times a second.
+
+\begin{keys}[1in]
+\key{S} & Type the server: \var{host}\texttt{:}\var{port}, where the port
+is the server's framed TCP port, 9003 unless it was set otherwise;
+\texttt{tcp://} is added if it is left out.\\
+\key{N} & Type a name, of up to seven characters.\\
+\key{W} & Change the world's width between 40 and 80. At 40 each place
+of the world is two columns of the terminal, so that the shapes are round;
+at 80 a place is a column, and the world is twice as wide, with narrower
+shapes.\\
+\key{Esc} & Quit.\\
+\end{keys}
+Any other key goes on. While a setting is typed, \key{Esc}, or typing
+nothing, leaves it as it was. In the world:
+
+\begin{keys}[1in]
+\key{I} & Show or hide two lines of information: the name, how many
+clients there are and how many shapes of each size, the world's size (in
+reverse video while it is frozen), and the keys.\\
+\key{W} & Show or hide the names of the clients.\\
+\key{1}--\key{5} & Add a shape of that size.\\
+\key{+}, \key{-} & Speed the world up; slow it down.\\
+\key{F} & Freeze the world, or let it go again.\\
+\key{R} & Reset the world.\\
+\key{C} & Show the screen in reverse video, or not.\\
+\key{L} & Flash the screen when shapes collide, or not.\\
+\key{S} & Make a sound when shapes collide, or not.\\
+\key{Q}, \key{Esc} & Quit. \key{Ctrl/C} is the same.\\
+\end{keys}
+The world is shared: \key{1}--\key{5}, \key{+}, \key{-}, \key{F}, and
+\key{R} change it for every client.
+\rh{Restrictions}
+The server must be of version 2.3 or later; its other port, 9002, is for
+older clients, whose replies have no length, and \cmd{fnbounce} cannot
+read them. The screen must be at least 80 columns by 24 lines, and show
+UTF-8. The sound is a burst on the noise voice of the SN76489
+(\rp{sn76489}{4}).
+\rh{Examples}
+To use the server at \texttt{bouncy.diller.org}, type \key{S} at the title
+screen, then
+\begin{exsmall}
+bouncy.diller.org:9003
+\end{exsmall}
+\rh{See Also} \rp{fnnews}{1}, \rp{fnstocks}{1}, \rp{fujinet}{4}
 \end{refpage}
 
 \refentry{fnconfig}{1}{FujiNet CONFIG}
@@ -2480,7 +2634,9 @@ TCL> \textbf{l2}
 \rh{Description}
 The tether is a program on your computer that talks to the TFR/911H over
 USB. It is the board's terminal: what you type goes to the 6309, and what
-the 6309 prints appears in the window. It is the board's disk: it reads and
+the 6309 prints appears in the window, UTF-8 and all (a byte of 128 or
+more that does not begin a UTF-8 character is shown as its Latin-1
+character). It is the board's disk: it reads and
 writes the sectors of disk image files for EmuDsk. And it sets the board's
 clock when it connects.
 
@@ -2634,6 +2790,27 @@ headlines comes in 1.7~seconds, a page of a story in 1.2, and a quote,
 with the list saved, in 2.2. The FujiNet's log shows the app keys read and
 written, as \file{/FujiNet/09010101.key} and \file{09010102.key} on its
 SD card. \cmd{mfree} shows all the memory back afterwards.
+\end{itemize}
+
+\section{fnbounce}
+
+\begin{itemize}\setlength{\itemsep}{0.3ex}
+\item On the board, through the FujiNet, against a server of version
+2.3.1 on the Internet: the first screen, with the server and the name
+kept in app keys; the kinds of shape; the world with and without its
+information; the clients' names; reverse video; the flash and the sound
+turned on; and quitting with \key{Q} and \key{Esc}, and with \key{Esc} at
+the first screen. Every screen was read back with a terminal emulator.
+\item Built for the Unix computer, against the same server: the title
+screen, the settings typed and kept, the world at 40 and at 80 places,
+with the width kept from one run to the next, and the kinds of shape laid
+out for each width.
+\item Its speed was measured part by part. An \texttt{SS.Fuji} exchange
+takes 3~milliseconds, a request for the shapes on the screen 80 to 100,
+and drawing a frame 83; the terminal takes some 4,000 characters a
+second. Drawn as at first, comparing the whole copy of the screen and
+writing through SCF, it showed 2.8 frames a second; it now shows 9.3 of
+the server's 10.
 \end{itemize}
 
 \section{The Firmware}

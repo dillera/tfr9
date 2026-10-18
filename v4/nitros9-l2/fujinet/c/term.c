@@ -1,17 +1,20 @@
 // term.c -- the console of the FujiNet C programs (see term.h).
 //
 // Everything written goes through a copy of the screen, a byte per cell
-// with bit 7 set where it is in reverse video, and a byte of its colors.  term_invert_row() flips a
-// row in the copy and sends it again; that is how the CoCo programs these
-// come from highlight a row, by flipping its attributes in screen memory.
+// with bit 7 set where it is in reverse video, and a byte of its colors.
+// term_invert_row() flips a row in the copy and sends it again; that is
+// how the CoCo programs these come from highlight a row, by flipping its
+// attributes in screen memory.
 //
 // The copy wraps at 80 columns.  When a line is full, the next character
 // is sent after a CR LF, not left to the terminal, which may be wider; the
 // scroll region is the first 24 rows, which the terminal may also exceed.
 //
-// The keys come from /term, read raw.  The tether sends the arrow keys and
-// Page Up/Down as 128..133, which the TFR/911H firmware gives a program as
-// they are while bit 7 of $FF42 is set; ^C and ^E arrive as signals.
+// Output is written to the console's 6850, not through SCF (see
+// plat_write()).  The keys come from /term, read raw.  The tether sends
+// the arrow keys and Page Up/Down as 128..133, which the TFR/911H firmware
+// gives a program as they are while bit 7 of $FF42 is set; ^C and ^E
+// arrive as signals.
 
 #include "term.h"
 
@@ -108,13 +111,21 @@ static void plat_done(void) {
     }
 }
 
+// Output goes to the console's 6850 directly, not through SCF, which
+// takes some 300 microseconds a character on the TFR/911H.  The firmware's
+// 6850 is always ready for another, and holds the 6309 when its FIFO to
+// the tether is full, so nothing is lost.
 static void plat_write(const char *p, word n) {
+    if (!n) return;
     asm {
-        lda     #1              ; standard output
         ldx     :p
         pshs    y
         ldy     :n
-        os9     $8A             ; I$Write
+@next
+        lda     ,x+
+        sta     $FF15           ; the 6850's transmit register
+        leay    -1,y
+        bne     @next
         puls    y
     }
 }
@@ -264,6 +275,25 @@ char *strlwr(char *s) {
 
 static byte scr[TERM_ROWS][TERM_COLS];  // each cell; bit 7: reverse video
 static byte col[TERM_ROWS][TERM_COLS];  // each cell's colors: fg | bg << 4
+static byte fscr[TERM_ROWS][TERM_COLS]; // in a frame: what the terminal shows
+static byte fcol[TERM_ROWS][TERM_COLS];
+static byte framing;        // in a frame: nothing is sent until it ends
+static byte fstale = 1;     // something was sent since the last frame ended
+static byte rows[TERM_ROWS];    // each row's state:
+#define ROW_BLANK 1         // all spaces, in the terminal's colors
+#define ROW_DIRTY 2         // written in this frame
+
+// The graphics characters (TG_*), kept in the copy as 1 to 26.
+#define NGLYPHS 26
+static const char glyphs[NGLYPHS][4] = {
+    "\xE2\x94\x80", "\xE2\x94\x82", "\xE2\x94\x8C", "\xE2\x94\x90",
+    "\xE2\x94\x94", "\xE2\x94\x98", "\xE2\x94\xA4", "\xE2\x94\x9C",
+    "\xE2\x94\xAC", "\xE2\x94\xB4", "\xE2\x94\xBC",
+    "\xE2\x96\x8C", "\xE2\x96\x90", "\xE2\x96\x84", "\xE2\x96\x80",
+    "\xE2\x96\x96", "\xE2\x96\x97", "\xE2\x96\x98", "\xE2\x96\x9D",
+    "\xE2\x96\x9C", "\xE2\x96\x9B", "\xE2\x96\x9F", "\xE2\x96\x99",
+    "\xE2\x96\x88", "\xE2\x96\x9A", "\xE2\x96\x9E"
+};
 static byte cx, cy;         // the cursor
 static byte wrap;           // the row is full: the next character starts a new one
 static byte rv;             // 0x80 if what follows is in reverse video
@@ -279,6 +309,8 @@ void term_flush(void) {
 }
 
 static void out(char c) {
+    if (framing) return;
+    fstale = 1;
     obuf[olen++] = c;
     if (olen == sizeof obuf) term_flush();
 }
@@ -295,7 +327,7 @@ static void out_num(byte n) {
 // One SGR sequence sets reverse video and both colors.
 static void out_style(byte r, byte c) {
     byte fg = c & 15, bg = c >> 4;
-    if (r == out_rv && c == out_cc) return;
+    if (framing || (r == out_rv && c == out_cc)) return;
     outs("\033[0");
     if (fg) {
         outs(fg > 8 ? ";9" : ";3");
@@ -313,7 +345,14 @@ static void out_style(byte r, byte c) {
 
 static void out_rv_set(byte r) { out_style(r, 0); }
 
+// A cell's character as the terminal wants it.
+static void out_cell(byte ch) {
+    if (ch && ch <= NGLYPHS) outs(glyphs[ch - 1]);
+    else out((char)ch);
+}
+
 static void out_goto(byte x, byte y) {
+    if (framing) return;
     outs("\033[");
     out_num(y + 1);
     out(';');
@@ -333,10 +372,10 @@ static void next_row(void) {
     memset(scr[TERM_ROWS - 1], ' ', TERM_COLS);
     memmove(col[0], col[1], (TERM_ROWS - 1) * TERM_COLS);
     memset(col[TERM_ROWS - 1], 0, TERM_COLS);
+    memset(rows, ROW_DIRTY, TERM_ROWS);
 }
 
-void term_putc(char c) {
-    byte ch = (byte)c;
+static void put_control(byte ch) {
     if (ch == '\n') {
         out('\r');
         out('\n');
@@ -361,19 +400,31 @@ void term_putc(char c) {
     }
     if (ch == '\t') {
         do term_putc(' '); while (cx & 7);
+    }
+}
+
+void term_putc(char c) {
+    byte ch = (byte)c;
+    if (ch < 32) {
+        put_control(ch);
         return;
     }
-    if (ch < 32) return;
-    if (ch > 126) ch = '?';
+    if (ch > 126) {
+        if (ch >= TG_HLINE && ch < TG_HLINE + NGLYPHS) ch = (byte)(ch - TG_HLINE + 1);
+        else ch = '?';
+    }
     if (wrap) {
         out('\r');
         out('\n');
         next_row();
     }
-    out_style(rv, cc);
-    out((char)ch);
+    if (!framing) {
+        out_style(rv, cc);
+        out_cell(ch);
+    }
     scr[cy][cx] = ch | rv;
     col[cy][cx] = cc;
+    rows[cy] = ROW_DIRTY;
     if (cx == TERM_COLS - 1) wrap = 1;
     else cx++;
 }
@@ -512,19 +563,33 @@ byte term_wherex(void) { return cx; }
 byte term_wherey(void) { return cy; }
 
 void term_clrscr(void) {
+    byte y;
+    cx = cy = 0;
+    wrap = 0;
+    if (framing) {          // the frame's end sends what changed
+        for (y = 0; y < TERM_ROWS; y++) {
+            if (rows[y] & ROW_BLANK) continue;
+            memset(scr[y], ' ', TERM_COLS);
+            memset(col[y], 0, TERM_COLS);
+            rows[y] = ROW_BLANK | ROW_DIRTY;
+        }
+        return;
+    }
     memset(scr, ' ', sizeof scr);
     memset(col, 0, sizeof col);
+    memset(rows, ROW_BLANK, TERM_ROWS);
     outs("\033[0m\033[2J\033[H");
     out_rv = 0;
     out_cc = 0;
-    cx = cy = 0;
-    wrap = 0;
 }
 
 void term_clreol(void) {
     if (wrap) return;
+    if (framing && (rows[cy] & ROW_BLANK)) return;
     memset(&scr[cy][cx], ' ', TERM_COLS - cx);
     memset(&col[cy][cx], 0, TERM_COLS - cx);
+    rows[cy] = cx ? ROW_DIRTY : ROW_BLANK | ROW_DIRTY;
+    if (framing) return;
     out_rv_set(0);
     outs("\033[K");
 }
@@ -538,14 +603,59 @@ void term_invert_row(byte y) {
     if (y >= TERM_ROWS) return;
     p = scr[y];
     c = col[y];
+    rows[y] = ROW_DIRTY;
     out_goto(0, y);
     for (x = 0; x < TERM_COLS; x++) {
         p[x] ^= 0x80;
         out_style(p[x] & 0x80, c[x]);
-        out((char)(p[x] & 0x7F));
+        out_cell(p[x] & 0x7F);
     }
     out_goto(cx, cy);
 }
+
+// A frame is drawn in the copy alone; at its end only the cells that
+// differ from what the terminal showed when it began are sent.  fscr and
+// fcol keep what the terminal shows, so that frame after frame they need
+// copying only when something was sent between frames.  Only the rows the
+// frame wrote are compared, and clearing the screen in a frame clears
+// only the rows that are not blank already.
+void term_frame(byte on) {
+    byte x, y, *s, *f, *c, *g, nx = 255, ny = 255;
+    if (on) {
+        if (framing) return;
+        if (fstale) {
+            memcpy(fscr, scr, sizeof scr);
+            memcpy(fcol, col, sizeof col);
+        }
+        for (y = 0; y < TERM_ROWS; y++) rows[y] &= ROW_BLANK;
+        framing = 1;
+        return;
+    }
+    if (!framing) return;
+    framing = 0;
+    for (y = 0; y < TERM_ROWS; y++) {
+        s = scr[y];
+        f = fscr[y];
+        c = col[y];
+        g = fcol[y];
+        if (!(rows[y] & ROW_DIRTY)) continue;
+        if (!memcmp(s, f, TERM_COLS) && !memcmp(c, g, TERM_COLS)) continue;
+        for (x = 0; x < TERM_COLS; x++) {
+            if (s[x] == f[x] && c[x] == g[x]) continue;
+            f[x] = s[x];
+            g[x] = c[x];
+            if (x != nx || y != ny) out_goto(x, y);
+            out_style(s[x] & 0x80, c[x]);
+            out_cell(s[x] & 0x7F);
+            nx = x + 1;
+            ny = y;
+        }
+    }
+    if (ny != 255) out_goto(cx, cy);
+    fstale = 0;
+}
+
+void term_raw(const char *s) { outs(s); }
 
 void term_cursor(byte on) { outs(on ? "\033[?25h" : "\033[?25l"); }
 

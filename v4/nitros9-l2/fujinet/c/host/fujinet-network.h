@@ -1,6 +1,6 @@
 // fujinet-network.h -- the network calls of fujinet-lib
-// (FujiNetWIFI/fujinet-lib) that the FujiNet C programs use, for NitrOS-9:
-// see fujinet.c.
+// (FujiNetWIFI/fujinet-lib) that the FujiNet C programs use, for testing
+// them on Unix: see fujinet-host.c.
 
 #ifndef FUJINET_NETWORK_H
 #define FUJINET_NETWORK_H
@@ -39,6 +39,9 @@ uint8_t network_status(const char *devicespec, uint16_t *bw, uint8_t *c, uint8_t
 // Reads len bytes, or what there is to the end; returns the count, or a
 // negative FN_ERR_* if nothing could be read.
 int16_t network_read(const char *devicespec, void *buf, uint16_t len);
+// Reads what is there, up to len bytes, waiting for something.
+int16_t network_read_nb(const char *devicespec, void *buf, uint16_t len);
+uint8_t network_write(const char *devicespec, const void *buf, uint16_t len);
 uint8_t network_json_parse(const char *devicespec);
 int16_t network_json_query(const char *devicespec, const char *query, char *s);
 

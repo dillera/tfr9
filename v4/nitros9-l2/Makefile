@@ -22,7 +22,7 @@ GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/in
 # The FujiNet commands (see fujinet/README.md), and the FujiNet programs
 # in C, which need CMOC too.
 FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
-FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks)
+FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks build/fn/fnbounce)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -150,6 +150,27 @@ build/fn/fnstocks: $(STOCKS_OBJS) $(FN_C_OBJS) $(FNLIB_A)
 	cd build/fn && $(CMOC) --os9 -o fnstocks $(patsubst build/fn/%,%,$(STOCKS_OBJS) $(FN_C_OBJS)) \
 	  -L../fnlib -lfujinet
 
+# fnbounce: markjfisher/bounce-world-client, commit BOUNCE_VERSION, with an
+# os9 platform beside its coco one.
+BOUNCE = fujinet/bounce
+BOUNCE_VERSION = 5ac9408
+BOUNCE_OBJS = $(patsubst $(BOUNCE)/src/%.c,build/fn/bounce/%.o,\
+  $(BOUNCE)/src/main.c $(wildcard $(BOUNCE)/src/common/*.c $(BOUNCE)/src/os9/*.c))
+BOUNCE_CFLAGS = $(FN_CFLAGS) -I$(BOUNCE)/src/include -I$(BOUNCE)/src/os9
+build/fn/bounce/%.o: $(BOUNCE)/src/%.c \
+    $(wildcard $(BOUNCE)/src/include/*.h $(BOUNCE)/src/os9/*.h $(FN_C)/*.h)
+	mkdir -p $(dir $@)
+	$(CMOC) $(BOUNCE_CFLAGS) -c -o $@ $<
+# version.o, with the date of the build and the upstream commit for the
+# title screen, is compiled again whenever anything else in fnbounce is.
+BOUNCE_VERSION_O = build/fn/bounce/os9/version.o
+$(BOUNCE_VERSION_O): $(filter-out $(BOUNCE_VERSION_O),$(BOUNCE_OBJS)) $(FN_C_OBJS) $(FNLIB_A)
+$(BOUNCE_VERSION_O): BOUNCE_CFLAGS += '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
+  '-DUPSTREAM_VERSION="$(BOUNCE_VERSION)"'
+build/fn/fnbounce: $(BOUNCE_OBJS) $(FN_C_OBJS) $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o fnbounce $(patsubst build/fn/%,%,$(BOUNCE_OBJS) $(FN_C_OBJS)) \
+	  -L../fnlib -lfujinet
+
 # fnnews and fnstocks for this computer, for testing: curl and python3 are
 # the FujiNet (fujinet/c/host/fujinet-host.c, with the few fujinet-lib
 # calls they use).
@@ -163,6 +184,21 @@ build/fnstocks-host: $(wildcard $(STOCKS)/src/*.c $(STOCKS)/src/os9/*.c \
 	$(CC) -O2 -DBUILD_OS9 '-DGIT_VERSION="$(STOCKS_VERSION)"' -I$(STOCKS)/include \
 	  -idirafter $(STOCKS)/include/os9 -I$(FN_C) -I$(FN_HOST) -o $@ $(STOCKS)/src/*.c \
 	  $(STOCKS)/src/os9/conio.c $(STOCKS)/src/os9/init.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
+
+# fnbounce for this computer, for testing against a server: compiled as
+# for CMOC, with fujinet/bounce/host's cmoc.h and coco.h, so that it takes
+# the same paths; term.c's Unix side, and fujinet-host.c's TCP.
+BOUNCE_HOST = $(BOUNCE)/host
+build/fnbounce-host: $(wildcard $(BOUNCE)/src/*.c $(BOUNCE)/src/*/*.[ch] \
+    $(BOUNCE_HOST)/*.h $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
+	mkdir -p build/bounce-host
+	for f in $(BOUNCE)/src/main.c $(BOUNCE)/src/common/*.c $(BOUNCE)/src/os9/*.c; do \
+	  $(CC) -O2 -w -D_CMOC_VERSION_ -DBUILD_OS9 -DBWC_HOST '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
+	    '-DUPSTREAM_VERSION="$(BOUNCE_VERSION)"' -I$(BOUNCE_HOST) -I$(FN_HOST) -I$(FN_C) \
+	    -I$(BOUNCE)/src/include -I$(BOUNCE)/src/os9 \
+	    -c -o build/bounce-host/$$(echo $$f | tr / _).o $$f || exit 1; \
+	done
+	$(CC) -O2 -I$(FN_C) -I$(FN_HOST) -o $@ build/bounce-host/*.o $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
 
 build/tetris: games/tetris.c
 	mkdir -p build
@@ -248,14 +284,14 @@ stories:
 	done
 	$(OS9_TOOL) dir $(DISK),GAMES
 
-# The reference manual (needs XeLaTeX, and the Times, Helvetica and
-# Courier fonts that come with macOS).
-manual: doc/tfr911h-reference.pdf
-doc/tfr911h-reference.pdf: doc/manual.tex
+# The TFR Manual and Reference (needs XeLaTeX, and the Times, Helvetica
+# and Courier fonts that come with macOS).
+manual: doc/tfr-manual.pdf
+doc/tfr-manual.pdf: doc/manual.tex
 	cd doc && for pass in 1 2; do \
-	  xelatex -interaction=nonstopmode -halt-on-error -jobname=tfr911h-reference manual.tex >/dev/null || exit 1; \
+	  xelatex -interaction=nonstopmode -halt-on-error -jobname=tfr-manual manual.tex >/dev/null || exit 1; \
 	done
-	cd doc && rm -f tfr911h-reference.aux tfr911h-reference.log tfr911h-reference.toc tfr911h-reference.out
+	cd doc && rm -f tfr-manual.aux tfr-manual.log tfr-manual.toc tfr-manual.out
 
 clean:
 	rm -rf build

@@ -51,8 +51,38 @@ void term_color(byte fg, byte bg);  // what follows is in these colors
 #define TC_WHITE   8
 #define TC_BRIGHT  7
 void term_invert_row(byte y);   // flips row y between normal and reverse
+void term_frame(byte on);   // on: draw unseen; off: send only what changed
+
+// Graphics characters, which term_putc() sends as UTF-8.
+#define TG_HLINE     0x80   // box drawing
+#define TG_VLINE     0x81
+#define TG_ULCORNER  0x82
+#define TG_URCORNER  0x83
+#define TG_LLCORNER  0x84
+#define TG_LRCORNER  0x85
+#define TG_RTEE      0x86
+#define TG_LTEE      0x87
+#define TG_TTEE      0x88
+#define TG_BTEE      0x89
+#define TG_CROSS     0x8A
+#define TG_LEFTHALF  0x8B   // blocks
+#define TG_RIGHTHALF 0x8C
+#define TG_LOWERHALF 0x8D
+#define TG_UPPERHALF 0x8E
+#define TG_QUAD_LL   0x8F   // quadrants: one, three, two
+#define TG_QUAD_LR   0x90
+#define TG_QUAD_UL   0x91
+#define TG_QUAD_UR   0x92
+#define TG_QUAD_NOLL 0x93
+#define TG_QUAD_NOLR 0x94
+#define TG_QUAD_NOUL 0x95
+#define TG_QUAD_NOUR 0x96
+#define TG_FULL      0x97
+#define TG_QUAD_ULLR 0x98
+#define TG_QUAD_URLL 0x99
 void term_cursor(byte on);
 void term_bell(void);
+void term_raw(const char *s);   // sent as it is, not kept in the copy
 
 byte term_ready(void);      // a key is waiting
 byte term_getc(void);       // waits for a key

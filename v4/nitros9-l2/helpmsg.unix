@@ -2,7 +2,7 @@
 Unix-style commands on the TFR/911H (try "man <name>"):
   ls ll cat cp mv rm mkdir rmdir pwd cd ps df less man
   grep clear uname exit vi vim info   and: tetris zm beep click
-FujiNet ("man fujinet"): fnconfig fnweather fnnews fnstocks fnstatus ...
+FujiNet ("man fujinet"): fnconfig fnweather fnnews fnstocks fnbounce ...
 Most are aliases that run the OS-9 command shown by "man".
 OS-9 paths use / like Unix; /DD is the disk, . and .. work.
 Differences: pipes are "!" not "|"; ">>" redirects errors (there is no
@@ -108,6 +108,7 @@ is /X0 (the FujiNet's slot 1).  Host slot 1 is often its SD card.
   fnweather        the weather where you are
   fnnews           the news, from the FujiNet news server
   fnstocks         a stock ticker, from Finnhub
+  fnbounce         Bounce World, shapes shared with other computers
   fnstatus         firmware version, WiFi network and IP settings
   fnlisthosts      the eight host slots
   fngethost  <host_slot>            show one host slot
@@ -143,6 +144,15 @@ Usage : Ten stocks, with a ticker, from Finnhub; the FujiNet keeps the
         list.  Arrows or 1-9 and 0 select, E edit, D delete, L look up a
         name, I company information, R refresh, H hide and S show the
         list, Esc quit.  Quotes are fetched again every five minutes.
+@FNBOUNCE
+Syntax: fnbounce
+Usage : Bounce World: shapes bouncing across the screens of all the
+        clients of a server.  On the title screen, S sets the server
+        (host:9003), N your name, and W the width (40: round shapes,
+        80: twice the room); any other key goes on.  In the world:
+        I info, W who, 1-5 add a shape, +/- speed, F freeze, R reset
+        (these change the world for everyone), C reverse video, L
+        flash and S sound on collisions, Q or Esc quit.
 @FNSTATUS
 Syntax: fnstatus
 Usage : The FujiNet's firmware version, host name, WiFi network and IP

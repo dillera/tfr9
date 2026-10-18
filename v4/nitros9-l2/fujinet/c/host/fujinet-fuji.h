@@ -1,6 +1,6 @@
 // fujinet-fuji.h -- the FujiNet device calls of fujinet-lib
-// (FujiNetWIFI/fujinet-lib) that the FujiNet C programs use, for NitrOS-9:
-// see fujinet.c.
+// (FujiNetWIFI/fujinet-lib) that the FujiNet C programs use, for testing
+// them on Unix: see fujinet-host.c.
 
 #ifndef FUJINET_FUJI_H
 #define FUJINET_FUJI_H

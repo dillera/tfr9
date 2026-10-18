@@ -155,6 +155,7 @@ makes the FujiNet open the new one.
 | `fnweather` | The weather where you are, from ip-api.com and Open-Meteo |
 | `fnnews` | The news, from the FujiNet news server (FujiNetWIFI/fujinet-news) |
 | `fnstocks` | Ten stocks and a ticker, from Finnhub (FujiNetWIFI/fujinet-stocks) |
+| `fnbounce` | Bounce World: shapes bouncing across many computers' screens (markjfisher/bounce-world-client) |
 
 Slots are numbered from 0 here (device slot 0 is `/X0`), as the FujiNet
 numbers them on the wire.
@@ -165,9 +166,9 @@ the tether's terminal, which should be at least 80 by 24.
 
 ## Programs in C
 
-`fnnews` and `fnstocks` are the CoCo versions of two FujiNet programs,
-written in C against fujinet-lib, the FujiNet's C library, and compiled
-with CMOC, which can compile for OS-9.
+`fnnews`, `fnstocks` and `fnbounce` are the CoCo versions of three
+FujiNet programs, written in C against fujinet-lib, the FujiNet's C
+library, and compiled with CMOC, which can compile for OS-9.
 
 * `fujinet-lib/` is fujinet-lib for NitrOS-9: FujiNetWIFI/fujinet-lib
   v5.0.1 (its `include/` and `common/`, unchanged) with a bus for
@@ -180,7 +181,11 @@ with CMOC, which can compile for OS-9.
   CoCo's BREAK, and the arrows arrive as they are, with bit 7 of `$FF42`
   set), ANSI colors, and a copy of the screen, so that a row can be shown
   in reverse video and back again, which the CoCo programs do by flipping
-  the attribute bytes in screen memory.
+  the attribute bytes in screen memory.  `term_frame()` draws a frame in
+  the copy alone and then sends only what changed, which is what the CoCo
+  does with two screens; the line-drawing and block characters
+  (`TG_HLINE` and the rest) go out as UTF-8.  Output is written straight
+  to the console's 6850 (`$FF15`), as SCF takes some 300 us a character.
 
 `news/` is the CoCo client of
 [fujinet-news](https://github.com/FujiNetWIFI/fujinet-news)
@@ -192,10 +197,29 @@ news comes from.  `stocks/` is
 `coco` one; its own files changed in a few lines (`BUILD_OS9`: an
 80-column screen, Esc for BREAK, colors, and the ticker drawn only when it
 moves).  The stock list is in the same app keys as on other computers.
+`bounce/` is
+[bounce-world-client](https://github.com/markjfisher/bounce-world-client)
+(commit 5ac9408), the client of Mark Fisher's
+[Bounce World](https://github.com/markjfisher/bounce-world), with an `os9`
+platform (`src/os9/`) beside its `coco` one.  The world is 40 or 80
+places wide, set on the title screen (`W`); at 40 each place is two
+columns of the terminal, so that round shapes look round.  The title
+screen, with the version and the date of the build, and the screen of
+shapes are NitrOS-9's own (`src/os9/title.c`), for an 80-column terminal.
+Its own files changed in a few lines (`BUILD_OS9`: the places, a color
+for each kind of shape, calls to those screens, and a main loop that
+sends the next request before it draws), and two for fujinet-lib 5, which
+has an `init_appkey()` of its own and makes `fn_network_bw` and its kin
+macros.
+Give it the server's framed TCP port, 9003 (`bouncy.diller.org:9003`);
+9002 is for clients older than 2.3.
 
-For trying a change without the board, `make build/fnnews-host` and
-`make build/fnstocks-host` build them for this computer, with
-`c/host/fujinet-host.c` (curl and python3) as the FujiNet.
+For trying a change without the board, `make build/fnnews-host`,
+`make build/fnstocks-host` and `make build/fnbounce-host` build them for
+this computer, with `c/host/fujinet-host.c` (curl, python3, and a socket
+for TCP) as the FujiNet; `fnbounce` is compiled as for CMOC, with
+`bounce/host/`'s stand-ins for CMOC's headers.  App keys are files in
+`$FN_APPKEYS`.
 
 ## How it works
 
