@@ -1,0 +1,668 @@
+#ifndef FUJINET_FUJI_H
+#define FUJINET_FUJI_H
+
+#include <fujinet-version.h>
+#include <fujinet-commands.h>
+#include <fujinet-const.h>
+#include <fujinet-err.h>
+
+// Many fuji_ functions are just macros to the bus call so we need to include this
+#include <fujinet-bus.h>
+
+// TODO: this header file needs more documentation
+
+// In general, bools return the "success" status, so true is good, false is bad.
+
+#ifdef FUJI_PLATFORM_C64
+
+// For DATA transfers, we want to undo some of the charmap settings in CC65.
+// So map the characters in the range 5b-60, 7b-7f back to themselves, as we want to send them as-is to FujiNet.
+// This undoes some "look alike" character that move into 0x80+ range, which in FN are converted to 3 byte utf-8 chars incorrectly.
+
+#pragma charmap (0x5B, 0x5B)
+#pragma charmap (0x5C, 0x5C)
+#pragma charmap (0x5D, 0x5D)
+#pragma charmap (0x5E, 0x5E)
+#pragma charmap (0x5F, 0x5F)
+#pragma charmap (0x60, 0x60)
+#pragma charmap (0x7B, 0x7B)
+#pragma charmap (0x7C, 0x7C)
+#pragma charmap (0x7D, 0x7D)
+#pragma charmap (0x7E, 0x7E)
+#pragma charmap (0x7F, 0x7F)
+
+#endif
+
+enum WifiStatus
+{
+    no_ssid_available = 1,
+    connected = 3,
+    connect_failed = 4,
+    connection_lost = 5
+};
+
+typedef struct
+{
+    char ssid[SSID_MAXLEN];
+    signed char rssi;
+} SSIDInfo;
+
+typedef struct
+{
+    char ssid[SSID_MAXLEN];
+    char password[MAX_PASSWORD_LEN];
+} NetConfig;
+
+typedef struct
+{
+    char ssid[SSID_MAXLEN];
+    char hostname[64];
+    uint8_t localIP[4];
+    uint8_t gateway[4];
+    uint8_t netmask[4];
+    uint8_t dnsIP[4];
+    uint8_t macAddress[6];
+    uint8_t bssid[6];
+    char fn_version[15];
+} AdapterConfig;
+
+typedef struct
+{
+    char ssid[SSID_MAXLEN];
+    char hostname[64];
+    uint8_t localIP[4];
+    uint8_t gateway[4];
+    uint8_t netmask[4];
+    uint8_t dnsIP[4];
+    uint8_t macAddress[6];
+    uint8_t bssid[6];
+    char fn_version[15];
+  //AdapterConfig;
+    char sLocalIP[16];
+    char sGateway[16];
+    char sNetmask[16];
+    char sDnsIP[16];
+    char sMacAddress[18];
+    char sBssid[18];
+} AdapterConfigExtended;
+
+typedef uint8_t HostSlot[32];
+
+typedef struct
+{
+    uint8_t hostSlot;
+    uint8_t mode;
+    uint8_t file[FILE_MAXLEN];
+} DeviceSlot;
+
+// Disks have different structures / parameters
+
+typedef struct
+{
+    uint8_t year, month, day;
+    uint8_t hour, minute, second;
+} FujiDirEntryTimestamp;
+
+#define FUJI_DIR_ENTRY_IS_TRUNC(x) ((x)->is_trunc)
+#define FUJI_DIR_ENTRY_IS_DIR(x) ((x)->is_dir)
+#define FUJI_DIR_FLAG_ADDITIONAL_DATA 0x80
+#define FUJI_DIR_EOF 0x7F
+
+#if defined(FUJI_PLATFORM_ATARI)   \
+  || defined(FUJI_PLATFORM_MSDOS)  \
+  || defined(FUJI_PLATFORM_MSX)    \
+  || defined(FUJI_PLATFORM_MODEL2) \
+  || defined(FUJI_PLATFORM_H89)    \
+  || defined(FUJI_PLATFORM_C64)
+typedef struct
+{
+  uint16_t numSectors;
+  uint16_t sectorSize;
+  uint8_t hostSlot;
+  uint8_t deviceSlot;
+  char filename[MAX_FILENAME_LEN];
+} NewDisk;
+
+#elif defined(FUJI_PLATFORM_APPLE2)
+typedef struct
+{
+  uint8_t hostSlot;
+  uint8_t deviceSlot;
+  uint8_t createType;
+  uint32_t numBlocks;
+  char filename[MAX_FILENAME_LEN];
+} NewDisk;
+
+#elif defined(FUJI_PLATFORM_COCO) \
+  || defined(FUJI_PLATFORM_PMD85)
+typedef struct
+{
+  uint8_t numDisks;
+  uint8_t hostSlot;
+  uint8_t deviceSlot;
+  char filename[MAX_FILENAME_LEN];
+} NewDisk;
+
+#elif defined(FUJI_PLATFORM_LYNX)
+typedef struct
+{
+  uint16_t numBlocks;
+  uint8_t hostSlot;
+  uint8_t deviceSlot;
+  char filename[MAX_FILENAME_LEN];
+} NewDisk;
+
+#endif // End of NewDisk defs
+
+#if defined(FUJI_PLATFORM_ATARI)   \
+  || defined(FUJI_PLATFORM_APPLE2) \
+  || defined(FUJI_PLATFORM_ADAM)
+typedef struct
+{
+  FujiDirEntryTimestamp modified;
+  uint32_t size;
+  uint8_t is_dir;
+  uint8_t is_trunc;
+  uint8_t mediatype;
+  char filename[MAX_FILENAME_LEN];
+} FujiDirEntry;
+
+#elif defined(FUJI_PLATFORM_MSDOS) \
+  || defined(FUJI_PLATFORM_MSX)    \
+  || defined(FUJI_PLATFORM_MODEL2) \
+  || defined(FUJI_PLATFORM_H89)
+typedef struct
+{
+  FujiDirEntryTimestamp modified;
+  uint32_t size;
+  uint8_t flags;
+  uint8_t mediatype;
+  char filename[MAX_FILENAME_LEN];
+} FujiDirEntry;
+
+#elif defined(FUJI_PLATFORM_COCO) \
+  || defined(FUJI_PLATFORM_PMD85) \
+  || defined(FUJI_PLATFORM_LYNX)
+typedef struct
+{
+  FujiDirEntryTimestamp modified;
+  uint32_t size;
+  uint8_t is_dir;
+  uint8_t is_trunc;
+  uint8_t mediatype;
+  char filename[MAX_FILENAME_LEN];
+} FujiDirEntry;
+
+#elif defined(FUJI_PLATFORM_C64)
+typedef struct
+{
+  FujiDirEntryTimestamp modified;
+  uint16_t size;
+  uint8_t flags;
+  uint8_t mediatype;
+  char filename[MAX_FILENAME_LEN];
+} FujiDirEntry;
+
+#endif // End of FujiDirEntry defs
+
+// WIP, only 64 fully supported at the moment.
+enum AppKeySize
+{
+    DEFAULT // 64 original size
+    // SIZE_256
+};
+
+#ifndef FUJI_PLATFORM_C64
+typedef struct
+{
+    unsigned char value[4];
+} FNStatus;
+#else
+typedef struct
+{
+    // needs some thought, at the moment it's just values from iecStatus, but could be made generic
+    // the Atari/Apple2 versions aren't being set with anything in firmware
+    union {
+        struct {
+            uint8_t error;          // the error code from FN
+            uint8_t cmd;            // the cmd that was being run
+            uint8_t connected;      // the connected status
+            uint8_t channel;        // the channel that was being used
+            char msg[41];           // error message: 40 + null
+        } value;
+        uint8_t raw[45];
+    };
+} FNStatus;
+
+#endif
+
+extern FNStatus _fuji_status;
+
+/**
+ * @brief Closes the currently open directory
+ * @return Success status, true if all OK.
+ */
+extern bool fuji_close_directory(void);
+
+/**
+ * @brief Copies a file from given src to dst, with supplied path in copy_spec
+ * @return Success status, true if all OK.
+ */
+#if defined(FUJI_PLATFORM_ADAM)
+extern bool fuji_copy_file_adam(uint8_t src_slot, uint8_t dest_slot, const char *copy_spec);
+#define fuji_copy_file(src_slot, dest_slot, copy_spec) fuji_copy_file_adam(src_slot, dest_slot, copy_spec)
+#elif defined(FUJI_PLATFORM_COCO)
+// Works perfectly on CoCo, never times out.
+#define fuji_copy_file(src_slot, dest_slot, copy_spec) FUJICALL_A1_A2_D(FUJICMD_COPY_FILE, src_slot, dest_slot, copy_spec, MAX_FILENAME_LEN)
+#else /* ! (ADAM || COCO) */
+extern bool fuji_copy_file_common(uint8_t src_slot, uint8_t dest_slot, const char *copy_spec);
+#define fuji_copy_file(src_slot, dest_slot, copy_spec) fuji_copy_file_common(src_slot, dest_slot, copy_spec)
+#endif /* FUJI_PLATFORM_ADAM */
+
+/**
+ * @brief Creates a new disk from the given structure.
+ * @return Success status, true if all OK.
+ */
+#define fuji_create_new(new_disk) FUJICALL_D(FUJICMD_NEW_DISK, new_disk, sizeof(NewDisk))
+
+#define fuji_disable_device(d) FUJICALL_A1(FUJICMD_DISABLE_DEVICE, d)
+#define fuji_enable_device(d) FUJICALL_A1(FUJICMD_ENABLE_DEVICE, d)
+
+// TODO: document and fix atari
+bool fuji_enable_udpstream(uint16_t port, char *host);
+
+/**
+ * @brief Generate a randomized GUID.
+ * @return success status of request
+ */
+#define fuji_generate_guid(guid) FUJICALL_RV(FUJICMD_GENERATE_GUID, guid, MAX_GUID_LEN)
+
+/**
+ * @brief Gets adapter config information from FN, e.g. IP, MAC, BSSID etc.
+ * Raw version that returns bytes for all IP etc related values.
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_adapter_config(ac) FUJICALL_RV(FUJICMD_GET_ADAPTERCONFIG, ac, sizeof(AdapterConfig))
+
+/**
+ * @brief Gets extended adapter config information from FN, e.g. IP, MAC, BSSID etc.
+ * Extended version that returns strings in addition to raw for all IP etc related values.
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_adapter_config_extended(ac) FUJICALL_RV(FUJICMD_GET_ADAPTERCONFIG_EXTENDED, ac, sizeof(AdapterConfigExtended))
+
+/**
+ * THIS IS BOGUS. Apple and Atari both just return "true" for any device.
+ * TODO: remove this if it isn't going to be properly implemented on FN.
+ *       which I think it could be by looking on FN side by looking at Config
+ * @return the enabled status of the given device: NOTE: ALWAYS RETURNS TRUE AT MOMENT
+ */
+bool fuji_get_device_enabled_status(uint8_t d);
+
+/**
+ * @brief Sets the buffer to the device's filename in device id `ds`
+ * Note: BUFFER MUST BE ABLE TO ACCEPT UP TO 256 BYTE STRING
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_device_filename(ds, buffer) FUJICALL_A1_RV(FUJICMD_GET_DEVICE_FULLPATH, ds, buffer, MAX_FILENAME_LEN)
+
+/**
+ * @brief Sets ALL device slot information into pointer d.
+ * `size` is the receiving array size, and the returned data size is checked against this before copying.
+ * If it doesn't match, no data is copied, and false is returned.
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_device_slots(d, count) FUJICALL_RV(FUJICMD_READ_DEVICE_SLOTS, d, sizeof(DeviceSlot) * count)
+
+/**
+ * @brief Fetch the current directory position for paging through directories into pos.
+ * @return success status of request
+ */
+#define fuji_get_directory_position(pos) FUJICALL_RV(FUJICMD_GET_DIRECTORY_POSITION, pos, sizeof(uint16_t))
+
+/**
+ * @brief Fetch the host prefix for given host slot id.
+ * @return success status of request
+ */
+#define fuji_get_host_prefix(hs, prefix) FUJICALL_A1_RV(FUJICMD_GET_HOST_PREFIX, hs, prefix, MAX_FILENAME_LEN)
+
+/**
+ * @brief Sets ALL host slot information into pointer h.
+ * `count` is the number of host slots, and the returned data size is checked against this multiple of HostSlot structs before copying.
+ * If it doesn't match, no data is copied, and false is returned.
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_host_slots(d, count) FUJICALL_RV(FUJICMD_READ_HOST_SLOTS, d, sizeof(HostSlot) * count)
+
+/**
+ * @brief Fills ssid_info with wifi scan results for bssid index n.
+ * No data copied if there is an error.
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_scan_result(n, ssid_info) FUJICALL_A1_RV(FUJICMD_GET_SCAN_RESULT, n, ssid_info, sizeof(SSIDInfo))
+
+/**
+ * @brief Fills net_config with current SSID/password values.
+ * No data copied if there is an error.
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_ssid(net_config) FUJICALL_RV(FUJICMD_GET_SSID, net_config, sizeof(NetConfig))
+
+/**
+ * @brief Checks if WIFI is enabled or not. Any device errors will return false also.
+ * @return enabled status 
+ */
+bool fuji_get_wifi_enabled(void);
+
+/**
+ * @brief  Sets status to the wifi status value.
+ * WL_CONNECTED (3), WL_DISCONNECTED (6) are set if there are no underyling errors in FN.
+ * @return Success status, true if all OK.
+ */
+#define fuji_get_wifi_status(status) FUJICALL_RV(FUJICMD_GET_WIFISTATUS, status, 1)
+
+/**
+ * @brief Mount all devices
+ * @return true if successful, false otherwise
+ */
+#define fuji_mount_all() FUJICALL(FUJICMD_MOUNT_ALL)
+
+/**
+ * @brief Mount specific device slot
+ * @return true if successful, false otherwise
+ */
+#define fuji_mount_disk_image(ds, mode) FUJICALL_A1_A2(FUJICMD_MOUNT_IMAGE, ds, mode)
+
+/**
+ * @brief Mount specific host slot
+ * @return true if successful, false otherwise
+ */
+#define fuji_mount_host_slot(hs) FUJICALL_A1(FUJICMD_MOUNT_HOST, hs)
+
+/**
+ * @brief Open the given directory on the given host slot.
+ * path_filter is a 256-byte buffer, not a string: the path, a NUL, then the filter.
+ * Whatever follows the path's NUL is sent as the filter, so put a second NUL there
+ * when none is intended.
+ * @return true if successful, false otherwise
+ */
+#define fuji_open_directory(hs, path_filter) FUJICALL_A1_D(FUJICMD_OPEN_DIRECTORY, hs, path_filter, MAX_FILENAME_LEN)
+
+/**
+ * @brief Open the given directory on the given host slot.
+ * path and filter are separate strings. If filter is not set, it is NULL
+ * @return true if successful, false otherwise
+ */
+bool fuji_open_directory_filter(uint8_t hostSlot, const char *path, const char *filter);
+#define fuji_open_directory2(hs, path, filter) fuji_open_directory_filter(hs, path, filter)
+
+/**
+ * @brief Save `size` device slots to FN
+ * @return true if successful, false if there was an error from FN
+ */
+#define fuji_put_device_slots(d, count) FUJICALL_D(FUJICMD_WRITE_DEVICE_SLOTS, d, sizeof(DeviceSlot) * count)
+
+/**
+ * @brief Save `size` hosts slots to FN
+ * @return true if successful, false if there was an error from FN
+ */
+#define fuji_put_host_slots(d, count) FUJICALL_D(FUJICMD_WRITE_HOST_SLOTS, d, sizeof(HostSlot) * count)
+
+/**
+ * @brief Fill buffer with directory information.
+ * @return success status of request
+ */
+extern bool fuji_read_directory(uint8_t maxlen, uint8_t aux2, void *buffer);
+
+/**
+ * @brief Reset FN
+ * @return true if successful, false if there was an error from FN
+ */
+#define fuji_reset() FUJICALL(FUJICMD_RESET)
+
+/**
+ * @brief Scans network for SSIDs and sets count accordingly.
+ * @return success status of request.
+ */
+#ifdef FUJI_PLATFORM_ATARI
+#define fuji_scan_for_networks(count) FUJICALL_RV(FUJICMD_SCAN_NETWORKS, count, 4)
+#elif defined(FUJI_PLATFORM_ADAM)
+extern bool fuji_scan_for_networks_adam(uint8_t *count);
+#define fuji_scan_for_networks(count) fuji_scan_for_networks_adam(count)
+#else /* ! (ATARI || ADAM) */
+#define fuji_scan_for_networks(count) FUJICALL_RV(FUJICMD_SCAN_NETWORKS, count, 1)
+#endif /* FUJI_PLATFORM_ATARI */
+
+/**
+ * @brief Sets whether the FN device boots into CONFIG.
+ * @return success status of request.
+ */
+#define fuji_set_boot_config(toggle) FUJICALL_A1(FUJICMD_CONFIG_BOOT, toggle)
+
+/* Values for fuji_set_boot_mode(), as the firmware's insert_boot_device() reads them. */
+enum FujiBootMode
+{
+  FUJI_BOOT_MODE_CONFIG         = 0,
+  FUJI_BOOT_MODE_MOUNT_AND_BOOT = 1,
+  FUJI_BOOT_MODE_LOBBY          = 2,
+  FUJI_BOOT_MODE_HISIO          = 3   /* Atari only */
+};
+
+/**
+ * @brief Sets the booting mode of the FN device.
+ * @param mode a FujiBootMode, e.g. FUJI_BOOT_MODE_LOBBY.
+ * @return success status of request.
+ */
+#define fuji_set_boot_mode(mode) FUJICALL_A1(FUJICMD_SET_BOOT_MODE, mode)
+
+/**
+ * @brief Sends the device/host/mode information for devices to FN
+ * @return success status of request.
+ */
+#ifdef FUJI_PLATFORM_ATARI
+#define fuji_set_device_filename(mode, hs, ds, buffer) FUJICALL_A1_A2_D(FUJICMD_SET_DEVICE_FULLPATH, ds, ((hs) << 4) | ((mode) & 0x0F), buffer, MAX_FILENAME_LEN)
+#elif defined(FUJI_PLATFORM_ADAM)
+// mode and hs are ignored on Adam
+#define fuji_set_device_filename(mode, hs, ds, buffer) FUJICALL_A1_D(FUJICMD_SET_DEVICE_FULLPATH, ds, buffer, strlen(buffer))
+#else /* !FUJI_PLATFORM_ATARI */
+#define fuji_set_device_filename(mode, hs, ds, buffer) FUJICALL_A1_A2_A3_D(FUJICMD_SET_DEVICE_FULLPATH, ds, hs, mode, buffer, MAX_FILENAME_LEN)
+#endif /* FUJI_PLATFORM_ATARI */
+
+/**
+ * @brief Sets current directory position
+ * @return success status of request.
+ */
+extern bool fuji_set_directory_position(uint16_t pos);
+
+#ifdef FUJI_PLATFORM_ATARI
+/**
+ * @brief Fetch the current HSIO index value.
+ * @return success status of request
+ */
+bool fuji_get_hsio_index(uint8_t *index);
+
+/**
+ * @brief Sets HSIO speed index
+ * @return success status of request.
+ */
+bool fuji_set_hsio_index(bool save, uint8_t index);
+
+/**
+ * @brief Sets SIO external clock speed
+ * @return success status of request.
+ */
+bool fuji_set_sio_external_clock(uint16_t rate);
+
+#endif
+
+/**
+ * @brief Set the host prefix for given host slot id for platforms that support it.
+ * @return success status of request
+ */
+#define fuji_set_host_prefix(hs, prefix) FUJICALL_A1_D(FUJICMD_SET_HOST_PREFIX, hs, prefix, MAX_FILENAME_LEN)
+
+/**
+ * @brief Set the SSID information from NetConfig structure
+ * @return success status of request
+ */
+#define fuji_set_ssid(nc) FUJICALL_A1_D(FUJICMD_SET_SSID, 0, nc, sizeof(NetConfig))
+
+/**
+ * @brief Gets the FNStatus information from FUJI device.
+ * @return success status of the status request
+ * NOTE: The actual status VALUE is in 'status', the return is just whether the command to fetch the status succeeded, it could succeed, but the status value holds an error.
+ */
+#ifdef FUJI_PLATFORM_C64
+#define fuji_status(status) FUJICALL_RV(FUJICMD_STATUS, status, sizeof(FNStatus))
+#else
+#define fuji_status(status) FUJICALL_A1_RV(FUJICMD_STATUS, 0, status, sizeof(FNStatus))
+#endif /* FUJI_PLATFORM_C64 */
+
+#ifdef FUJI_PLATFORM_C64
+// DEBUGGING
+bool fuji_set_status(void);
+#endif
+
+/**
+ * @brief Unmounts the device in slot ds
+ * @return success status of request
+ */
+#define fuji_unmount_disk_image(ds) FUJICALL_A1(FUJICMD_UNMOUNT_IMAGE, ds)
+
+/**
+ * @brief Unmounts the host in slot hs
+ * @return success status of request
+ */
+#define fuji_unmount_host_slot(hs) FUJICALL_A1(FUJICMD_UNMOUNT_HOST, hs)
+
+/**
+ * @brief  Opens and reads from appkey using the provided details. Writes to the data buffer, and sets count to the amount of data read if it is less than the full keysize.
+ * @param  key_id the specific key id of this application.
+ * @param  count a pointer to an int for the number of bytes that were read.
+ * @param  data a pointer to the memory to write the data back to. WARNING: The data buffer needs to be at least 2 more bytes larger than the keysize.
+ * @return success status of the call. If either the initial OPEN or subsequent READ fail, will return false.
+ */
+#ifdef FUJI_PLATFORM_C64
+extern bool fuji_read_appkey_c64(uint8_t key_id, uint16_t *count, uint8_t *data);
+#define fuji_read_appkey(k, c, d) fuji_read_appkey_c64(k, c, d)
+#else
+extern bool fuji_read_appkey_common(uint8_t key_id, uint16_t *count, uint8_t *data);
+#define fuji_read_appkey(k, c, d) fuji_read_appkey_common(k, c, d)
+#endif /* FUJI_PLATFORM_C64 */
+
+/**
+ * @brief  Writes to an appkey using the provided details previously setup with fuji_set_appkey_details.
+ * @param  key_id the specific key id of this application.
+ * @param  count the number of bytes in the buffer to write to the appkey.
+ * @param  data a pointer to the memory to write from.
+ * @return success status of the call. If either the initial OPEN or subsequent WRITE fail, will return false.
+ */
+bool fuji_write_appkey(uint8_t key_id, uint16_t count, uint8_t *data);
+
+/**
+ * @brief  Sets the base details for appkeys. This must be called before using read or write operations on appkeys.
+ * @param  creator_id the id of the creator of the appkey
+ * @param  app_id the id of the application from the creator
+ * @param  keysize type: AppKeySize, set to DEFAULT for 64 byte appkeys, or SIZE_256 for 256 byte keys
+ */
+extern uint16_t ak_creator_id;
+extern uint8_t ak_app_id;
+extern enum AppKeySize ak_appkey_size;
+#define fuji_set_appkey_details(creator, app, size) \
+  ( ak_creator_id = creator, ak_app_id = app,  ak_appkey_size = size )
+
+// Base64
+// ALL RETURN VALUES ARE SUCCESS STATUS VALUE, i.e. true == success
+#define fuji_base64_decode_compute(void) FUJICALL(FUJICMD_BASE64_DECODE_COMPUTE)
+#define fuji_base64_decode_input(s, len) FUJICALL_B12_D(FUJICMD_BASE64_DECODE_INPUT, len, s, len)
+#define fuji_base64_decode_length(len) FUJICALL_RV(FUJICMD_BASE64_DECODE_LENGTH, len, sizeof(unsigned long))
+#define fuji_base64_decode_output(s, len) FUJICALL_B12_RV(FUJICMD_BASE64_DECODE_OUTPUT, len, s, len)
+
+#define fuji_base64_encode_compute(void) FUJICALL(FUJICMD_BASE64_ENCODE_COMPUTE)
+#define fuji_base64_encode_input(s, len) FUJICALL_B12_D(FUJICMD_BASE64_ENCODE_INPUT, len, s, len)
+#define fuji_base64_encode_length(len) FUJICALL_RV(FUJICMD_BASE64_ENCODE_LENGTH, len, sizeof(unsigned long))
+#define fuji_base64_encode_output(s, len) FUJICALL_B12_RV(FUJICMD_BASE64_ENCODE_OUTPUT, len, s, len)
+
+////////////////////////////////////////////////////////////////
+// These are very low level functions and should only be used internally.
+// Please use the new interface functions below this section.
+////////////////////////////////////////////////////////////////
+// All return success status (true = worked)
+#define fuji_hash_compute(type) FUJICALL_A1(FUJICMD_HASH_COMPUTE, type)
+#define fuji_hash_compute_no_clear(type) FUJICALL_A1(FUJICMD_HASH_COMPUTE_NO_CLEAR, type)
+#define fuji_hash_input(data, len) FUJICALL_B12_D(FUJICMD_HASH_INPUT, len, data, len)
+// this requires compute to have been called to set the hashing algorithm - don't use!
+// ALSO, there is no way to get the return value with this signature
+
+// output_type is 1 for hex, 0 of binary. the len is the length of data, which currently is only up to 128 if hex, but future proofing with word.
+//bool fuji_hash_output(uint8_t output_type, char *s, uint16_t len);
+#define fuji_hash_output(type, data, len) FUJICALL_A1_RV(FUJICMD_HASH_OUTPUT, type, data, len)
+
+/**
+ * \deprecated Use fuji_hash_size instead, as this function is broken.
+ */
+//bool fuji_hash_length(uint8_t mode);
+#define fuji_hash_length(mode, reply, len) FUJICALL_A1_RV(FUJICMD_HASH_LENGTH, mode, reply, len)
+
+///////////////////////////////////////////////////////
+// New hashing interface
+
+typedef enum HashType
+{
+    MD5,
+    SHA1,
+    SHA256,
+    SHA512
+} hash_alg_t;
+
+/**
+ * @brief  Returns the size of the hash that will be produced for the given hash_type and whether hex output is required or not. This should be used to calculate the memory needed for the output of \ref fuji_hash_data
+ * @param  hash_type The \ref hash_alg_t "type of hash" to use: MD5, SHA1, SHA256, SHA512
+ * @param  as_hex True if the returned data should be a hex string, false if it should be binary. Hex has twice the length as binary in the output.
+ * @return the length of the hash that will be computed for this algorithm depending on whether hex is being returned or not.
+ */
+uint16_t fuji_hash_size(hash_alg_t hash_type, bool as_hex);
+
+/**
+ * @brief  Computes the hash of the given input data in a single operation. This is a simpler interface than using \ref fuji_hash_clear, \ref fuji_hash_add, \ref fuji_hash_calculate, and can be used instead of those 3 operations if there is only 1 piece of data to hash.
+ *         This will also clear any data previously add using fuji_hash_add, and also clears any memory associated with hashing in the FujiNet at the end of the operation. It is the one stop shop, if you use it with the other 3 functions, you must sequence them correctly so this function doesn't clear the existing sent data.
+ * @param  hash_type The \ref hash_alg_t "type of hash" to use: MD5, SHA1, SHA256, SHA512
+ * @param  input The binary data that requires hash computed on
+ * @param  length The length of binary data in "input" to compute a hash on
+ * @param  as_hex True if the returned data should be a hex string, false if it should be binary. Hex has twice the length as binary in the output.
+ * @param  output The buffer to write the hash value to. This must be allocated by the application itself, it is not done in the library. \ref fuji_hash_value "fuji_hash_value()".
+ * @returns sucess status of the operation
+ */
+bool fuji_hash_data(hash_alg_t hash_type, uint8_t *input, uint16_t length, bool as_hex, uint8_t *output);
+
+/**
+ * @brief  Clear any data associated with hashing in the Fujinet. Should be called before calculating new hashes when using \ref fuji_hash_add and \ref fuji_hash_calculate. Can also be called to discard any data previously sent to free memory on the FujiNet used for any previous data sent with \ref fuji_hash_add.
+ * @return success status of the operation
+ */
+//bool fuji_hash_clear(void);
+#define fuji_hash_clear() FUJICALL(FUJICMD_HASH_CLEAR)
+
+/**
+ * @brief  Adds data that needs to be hashed.
+ * @param  data Pointer to the byte data
+ * @param  length the length of data to add for hashign
+ * @return success status of the operation
+ */
+//bool fuji_hash_add(uint8_t *data, uint16_t length);
+#define fuji_hash_add(data, length) fuji_hash_input(data, length)
+
+/**
+ * @brief  Calculates the hash of the accumulated data. Can be called multiple times with different hash_type values on the same data if discard_data is false. If different data is required to be hashed, call \ref fuji_hash_clear to start over, then add data with \ref fuji_hash_add again.
+ * @param  hash_type The \ref hash_alg_t "type of hash" to use: MD5, SHA1, SHA256, SHA512
+ * @param  as_hex True if the returned data should be a hex string, false if it should be binary. Hex has twice the length as binary in the output.
+ * @param  discard_data If true the data will be freed from FujiNet memory after the hash is calculated. Use false if you are calculating more than one hash type on the data, and end with discard_data is true, or call \ref fuji_hash_clear to also clean up.
+ * @param  output The buffer to write the hash to. The caller is responsible for allocating enough memory for this (based on \ref fuji_hash_length)
+ * @return the success status of the operation.
+ */
+bool fuji_hash_calculate(hash_alg_t hash_type, bool as_hex, bool discard_data, uint8_t *output);
+
+#define fuji_get_time(buffer) FUJICALL_RV(FUJICMD_GET_TIME, buffer, 7)
+
+extern FujiDirEntry *fuji_file_stat(uint8_t host, const char *path);
+
+#endif /* FUJINET_FUJI_H */

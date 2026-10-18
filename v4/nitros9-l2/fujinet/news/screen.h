@@ -22,5 +22,10 @@ char *screen_lower(const char *s);
 void show_fetching_msg(bool clear, bool articles);
 void get_line(char *buf, uint8_t max_len);
 byte waitkey(byte blink);
+void title_bar(byte y, const char *text);
+void rule(byte y, byte len);
+void show_about(byte y);
+
+#define NEWS_SERVER "https://fujinet.online/8bitnews/news.php"
 
 #endif /* SCREEN_H */

@@ -1,0 +1,10 @@
+#include <cmoc.h>
+#include <coco.h>
+#include "fujinet-network.h"
+#include "fujinet-network-coco.h"
+#include "fujinet-err.h"
+
+uint8_t fn_error(uint8_t code)
+{
+	return (code == BUS_SUCCESS) ? FN_ERR_OK : FN_ERR_IO_ERROR;
+}

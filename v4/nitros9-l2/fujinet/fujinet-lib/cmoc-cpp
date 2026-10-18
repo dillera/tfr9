@@ -1,0 +1,3 @@
+#!/bin/sh
+# CMOC's C preprocessor: the C compiler's, in ISO mode (macOS's cpp is traditional).
+exec ${CC:-cc} -E "$@"

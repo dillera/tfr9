@@ -8,6 +8,11 @@
  */
 
 #include "globals.h"
+#ifdef _CMOC_VERSION_
+#include <fujinet-version.h>
+#else
+#define FNLIB_VERSION_FULL "(host build)"
+#endif
 
 /**
  * @brief Temp space for strupr(s) output, so original strings doesn't get changed.
@@ -18,7 +23,63 @@ void clear_screen(byte color)
 {
     (void)color;
     term_reverse(0);
+    term_color(TC_DEFAULT, TC_DEFAULT);
     term_clrscr();
+}
+
+/**
+ * @brief A bar across the screen, bright white on blue, the text centered
+ */
+void title_bar(byte y, const char *text)
+{
+    int pad = (textMode - (int)strlen(text)) / 2;
+
+    gotoxy(0, y);
+    term_color(TC_BRIGHT + TC_WHITE, TC_BLUE);
+    printf("%*s%s%*s", pad, "", text, (int)textMode - pad - (int)strlen(text), "");
+    term_color(TC_DEFAULT, TC_DEFAULT);
+}
+
+/**
+ * @brief A blue rule of len dashes at the start of row y
+ */
+void rule(byte y, byte len)
+{
+    gotoxy(0, y);
+    term_color(TC_BLUE, TC_DEFAULT);
+    while (len--)
+        putchar('-');
+    term_color(TC_DEFAULT, TC_DEFAULT);
+}
+
+/**
+ * @brief About the program and the server, from row y
+ */
+void show_about(byte y)
+{
+    rule(y, textMode);
+    gotoxy(0, y + 2);
+    term_color(TC_BRIGHT + TC_YELLOW, TC_DEFAULT);
+    printf("  FujiNet News for NitrOS-9");
+    term_color(TC_CYAN, TC_DEFAULT);
+    gotoxy(0, y + 4);
+    printf("%18s", "News server: ");
+    term_color(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
+    printf("%s", NEWS_SERVER);
+    term_color(TC_CYAN, TC_DEFAULT);
+    gotoxy(0, y + 5);
+    printf("%18s", "Server version: ");
+    term_color(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
+    printf("the back end of December 2024 (it reports no number)");
+    term_color(TC_CYAN, TC_DEFAULT);
+    gotoxy(0, y + 6);
+    printf("%18s", "Client: ");
+    term_color(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
+    printf("fujinet-news CoCo client b351d24, fujinet-lib %s", FNLIB_VERSION_FULL);
+    gotoxy(0, y + 8);
+    term_color(TC_BRIGHT + TC_GREEN, TC_DEFAULT);
+    printf("  Ported to NitrOS-9 in 2026 by DILLER for the TFR/911H.");
+    term_color(TC_DEFAULT, TC_DEFAULT);
 }
 
 void bar(byte y)
@@ -38,20 +99,21 @@ void print_reverse(byte x, byte y, const char *text, bool lowercase_only)
 
     if (lowercase_only)
     {
+        // The keys black on cyan, the words about them in cyan.
         for (int i = 0; i < len; i++)
         {
             if (text[i] >= 'a' && text[i] <= 'z')
             {
-                term_reverse(1);
+                term_color(TC_BLACK, TC_CYAN);
                 putchar(text[i] - 32);
             }
             else
             {
-                term_reverse(0);
+                term_color(TC_CYAN, TC_DEFAULT);
                 putchar(text[i]);
             }
         }
-        term_reverse(0);
+        term_color(TC_DEFAULT, TC_DEFAULT);
     }
     else
     {

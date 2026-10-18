@@ -37,6 +37,17 @@ static char menu_line_buffer[81];
 char *articles_display_headline(char *s);
 
 /**
+ * @brief The headline across the top two rows, bright white on blue
+ */
+static void article_headline(void)
+{
+    gotoxy(0, 0);
+    term_color(TC_BRIGHT + TC_WHITE, TC_BLUE);
+    printf("%-*s", (int)textMode * 2, articles_display_headline(title));
+    term_color(TC_DEFAULT, TC_DEFAULT);
+}
+
+/**
  * @brief Initial entrypoint, reset local state
  */
 ArticleState article_reset(void)
@@ -93,14 +104,18 @@ ArticleState article_display(void)
 {
     clear_screen(1);
 
-    gotoxy(0, 0);
-    printf("%-*s", (int)textMode * 2, articles_display_headline(title));
-    for (byte r = 0; r < 2; r++) bar(r);
+    article_headline();
+    gotoxy(0, 2);
+    term_color(TC_YELLOW, TC_DEFAULT);
+    printf("%s   %s", date, source);
+    rule(3, textMode);
 
     // The text starts where a CoCo puts it after "\n\n", the headline
     // having taken it to the start of row 2.
     gotoxy(0, 4);
+    term_color(TC_DEFAULT, TC_DEFAULT);
     term_puts(pageData);    // longer than printf() can take
+    rule(menu_line - 1, textMode);
 
     return ARTICLE_MENU;
 }
@@ -196,12 +211,18 @@ ArticleState article_info(void)
 {
     clear_screen(1);
 
-    gotoxy(0, 0);
-    printf("%-*s", (int)textMode * 2, articles_display_headline(title));
-    for (byte r = 0; r < 2; r++) bar(r);
+    article_headline();
     gotoxy(0, 4);
-    printf("%*s%s\n", 33, "Date:", date);
-    printf("%*s%s", 33, "Source:", source);
+    term_color(TC_CYAN, TC_DEFAULT);
+    printf("%18s", "Date: ");
+    term_color(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
+    printf("%s", date);
+    gotoxy(0, 5);
+    term_color(TC_CYAN, TC_DEFAULT);
+    printf("%18s", "Source: ");
+    term_color(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
+    printf("%s", source);
+    show_about(8);
 
     gotoxy((textMode - 27) >> 1, menu_line);
     printf("<Press any key to continue>");

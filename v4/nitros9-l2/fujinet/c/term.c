@@ -1,7 +1,7 @@
 // term.c -- the console of the FujiNet C programs (see term.h).
 //
 // Everything written goes through a copy of the screen, a byte per cell
-// with bit 7 set where it is in reverse video.  term_invert_row() flips a
+// with bit 7 set where it is in reverse video, and a byte of its colors.  term_invert_row() flips a
 // row in the copy and sends it again; that is how the CoCo programs these
 // come from highlight a row, by flipping its attributes in screen memory.
 //
@@ -263,10 +263,13 @@ char *strlwr(char *s) {
 // ── The screen ─────────────────────────────────────────────────────
 
 static byte scr[TERM_ROWS][TERM_COLS];  // each cell; bit 7: reverse video
+static byte col[TERM_ROWS][TERM_COLS];  // each cell's colors: fg | bg << 4
 static byte cx, cy;         // the cursor
 static byte wrap;           // the row is full: the next character starts a new one
 static byte rv;             // 0x80 if what follows is in reverse video
+static byte cc;             // the colors of what follows
 static byte out_rv;         // 0x80 if the terminal has reverse video on
+static byte out_cc;         // the terminal's colors
 static char obuf[256];
 static word olen;
 
@@ -289,11 +292,26 @@ static void out_num(byte n) {
     out((char)('0' + n % 10));
 }
 
-static void out_rv_set(byte r) {
-    if (r == out_rv) return;
-    outs(r ? "\033[7m" : "\033[27m");
+// One SGR sequence sets reverse video and both colors.
+static void out_style(byte r, byte c) {
+    byte fg = c & 15, bg = c >> 4;
+    if (r == out_rv && c == out_cc) return;
+    outs("\033[0");
+    if (fg) {
+        outs(fg > 8 ? ";9" : ";3");
+        out((char)('0' + (fg > 8 ? fg - 8 : fg - 1)));
+    }
+    if (bg) {
+        outs(";4");
+        out((char)('0' + bg - 1));
+    }
+    if (r) outs(";7");
+    out('m');
     out_rv = r;
+    out_cc = c;
 }
+
+static void out_rv_set(byte r) { out_style(r, 0); }
 
 static void out_goto(byte x, byte y) {
     outs("\033[");
@@ -313,6 +331,8 @@ static void next_row(void) {
     }
     memmove(scr[0], scr[1], (TERM_ROWS - 1) * TERM_COLS);
     memset(scr[TERM_ROWS - 1], ' ', TERM_COLS);
+    memmove(col[0], col[1], (TERM_ROWS - 1) * TERM_COLS);
+    memset(col[TERM_ROWS - 1], 0, TERM_COLS);
 }
 
 void term_putc(char c) {
@@ -350,9 +370,10 @@ void term_putc(char c) {
         out('\n');
         next_row();
     }
-    out_rv_set(rv);
+    out_style(rv, cc);
     out((char)ch);
     scr[cy][cx] = ch | rv;
+    col[cy][cx] = cc;
     if (cx == TERM_COLS - 1) wrap = 1;
     else cx++;
 }
@@ -492,8 +513,10 @@ byte term_wherey(void) { return cy; }
 
 void term_clrscr(void) {
     memset(scr, ' ', sizeof scr);
+    memset(col, 0, sizeof col);
     outs("\033[0m\033[2J\033[H");
     out_rv = 0;
+    out_cc = 0;
     cx = cy = 0;
     wrap = 0;
 }
@@ -501,20 +524,24 @@ void term_clrscr(void) {
 void term_clreol(void) {
     if (wrap) return;
     memset(&scr[cy][cx], ' ', TERM_COLS - cx);
+    memset(&col[cy][cx], 0, TERM_COLS - cx);
     out_rv_set(0);
     outs("\033[K");
 }
 
 void term_reverse(byte on) { rv = on ? 0x80 : 0; }
 
+void term_color(byte fg, byte bg) { cc = (byte)((fg & 15) | (bg << 4)); }
+
 void term_invert_row(byte y) {
-    byte x, *p;
+    byte x, *p, *c;
     if (y >= TERM_ROWS) return;
     p = scr[y];
+    c = col[y];
     out_goto(0, y);
     for (x = 0; x < TERM_COLS; x++) {
         p[x] ^= 0x80;
-        out_rv_set(p[x] & 0x80);
+        out_style(p[x] & 0x80, c[x]);
         out((char)(p[x] & 0x7F));
     }
     out_goto(cx, cy);
@@ -529,6 +556,7 @@ void term_init(void) {
     memset(scr, ' ', sizeof scr);
     olen = 0;
     rv = out_rv = 0;
+    cc = out_cc = 0;
     outs("\033[0m\033[1;24r\033[?25l");
     term_clrscr();
     term_flush();

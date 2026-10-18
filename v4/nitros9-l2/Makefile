@@ -97,12 +97,29 @@ build/fn/%.o: fujinet/cmds/%.as fujinet/defs/drivewire.d fujinet/lib/fnansi.as
 build/fn/%: build/fn/%.o build/fn/fnnet.o build/fn/fuji.o build/sys.o build/alib.a
 	cd build/fn && $(LWLINK) --format=os9 -o $* $*.o fnnet.o fuji.o ../sys.o ../alib.a
 
-# The FujiNet programs in C.  fujinet/c is their FujiNet (fujinet-lib's
-# calls, through SS.Fuji) and their terminal.
+# fujinet-lib for NitrOS-9: FujiNetWIFI/fujinet-lib's common code with a
+# bus for OS-9, which reaches the FujiNet through SS.Fuji (see
+# fujinet/fujinet-lib/README.md).  CMOC is given an ISO C preprocessor
+# (cmoc-cpp), since fujinet-lib indents its directives and macOS's cpp
+# is a traditional one.
+FNLIB = fujinet/fujinet-lib
+FNLIB_CFLAGS = --os9 --cpp=$(CURDIR)/$(FNLIB)/cmoc-cpp -I$(FNLIB)/include
+FNLIB_SRC = $(wildcard $(FNLIB)/common/*.c $(FNLIB)/bus/os9/*.c $(FNLIB)/bus/os9/*.s)
+FNLIB_OBJS = $(patsubst $(FNLIB)/%,build/fnlib/%.o,$(FNLIB_SRC))
+FNLIB_A = build/fnlib/libfujinet.a
+build/fnlib/%.o: $(FNLIB)/% $(wildcard $(FNLIB)/include/*.h $(FNLIB)/bus/os9/*.h)
+	mkdir -p $(dir $@)
+	$(CMOC) $(FNLIB_CFLAGS) -I$(FNLIB)/bus/os9 -c -o $@ $<
+$(FNLIB_A): $(FNLIB_OBJS)
+	rm -f $@ && $(LWAR) -a -r $@ $^
+fujinet-lib: $(FNLIB_A)
+
+# The FujiNet programs in C, linked with fujinet-lib.  fujinet/c is their
+# terminal.  The stack space counts only when compiling the file with main().
 FN_C = fujinet/c
-# The stack space counts only when compiling the file with main().
-FN_CFLAGS = --os9 --function-stack=0 --add-os9-stack-space=2048 -DBUILD_OS9 -I$(FN_C)
-FN_C_OBJS = build/fn/c/term.o build/fn/c/fujinet.o
+FN_CFLAGS = $(FNLIB_CFLAGS) --function-stack=0 --add-os9-stack-space=2048 \
+  -DBUILD_OS9 -I$(FN_C)
+FN_C_OBJS = build/fn/c/term.o
 build/fn/c/%.o: $(FN_C)/%.c $(wildcard $(FN_C)/*.h)
 	mkdir -p $(dir $@)
 	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
@@ -113,9 +130,9 @@ NEWS_OBJS = $(patsubst $(NEWS)/%.c,build/fn/news/%.o,$(wildcard $(NEWS)/*.c))
 build/fn/news/%.o: $(NEWS)/%.c $(wildcard $(NEWS)/*.h $(FN_C)/*.h)
 	mkdir -p $(dir $@)
 	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
-build/fn/fnnews: $(NEWS_OBJS) $(FN_C_OBJS)
-	cd build/fn && $(CMOC) --os9 -o fnnews \
-	  $(patsubst build/fn/%,%,$^)
+build/fn/fnnews: $(NEWS_OBJS) $(FN_C_OBJS) $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o fnnews $(patsubst build/fn/%,%,$(NEWS_OBJS) $(FN_C_OBJS)) \
+	  -L../fnlib -lfujinet
 
 # fnstocks: FujiNetWIFI/fujinet-stocks, commit STOCKS_VERSION, with an
 # os9 platform beside its coco one.
@@ -129,21 +146,23 @@ build/fn/stocks/%.o: $(STOCKS)/src/%.c \
     $(wildcard $(STOCKS)/include/*.h $(STOCKS)/include/os9/*.h $(FN_C)/*.h)
 	mkdir -p $(dir $@)
 	$(CMOC) $(STOCKS_CFLAGS) -c -o $@ $<
-build/fn/fnstocks: $(STOCKS_OBJS) $(FN_C_OBJS)
-	cd build/fn && $(CMOC) --os9 -o fnstocks \
-	  $(patsubst build/fn/%,%,$^)
+build/fn/fnstocks: $(STOCKS_OBJS) $(FN_C_OBJS) $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o fnstocks $(patsubst build/fn/%,%,$(STOCKS_OBJS) $(FN_C_OBJS)) \
+	  -L../fnlib -lfujinet
 
 # fnnews and fnstocks for this computer, for testing: curl and python3 are
-# the FujiNet (fujinet/c/fujinet-host.c).
-build/fnnews-host: $(wildcard $(NEWS)/*.[ch] $(FN_C)/*.[ch])
+# the FujiNet (fujinet/c/host/fujinet-host.c, with the few fujinet-lib
+# calls they use).
+FN_HOST = $(FN_C)/host
+build/fnnews-host: $(wildcard $(NEWS)/*.[ch] $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
 	mkdir -p build
-	$(CC) -O2 -I$(FN_C) -o $@ $(NEWS)/*.c $(FN_C)/term.c $(FN_C)/fujinet-host.c
+	$(CC) -O2 -I$(FN_C) -I$(FN_HOST) -o $@ $(NEWS)/*.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
 build/fnstocks-host: $(wildcard $(STOCKS)/src/*.c $(STOCKS)/src/os9/*.c \
-    $(STOCKS)/include/*.h $(STOCKS)/include/os9/*.h $(FN_C)/*.[ch])
+    $(STOCKS)/include/*.h $(STOCKS)/include/os9/*.h $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
 	mkdir -p build
 	$(CC) -O2 -DBUILD_OS9 '-DGIT_VERSION="$(STOCKS_VERSION)"' -I$(STOCKS)/include \
-	  -idirafter $(STOCKS)/include/os9 -I$(FN_C) -o $@ $(STOCKS)/src/*.c \
-	  $(STOCKS)/src/os9/conio.c $(STOCKS)/src/os9/init.c $(FN_C)/term.c $(FN_C)/fujinet-host.c
+	  -idirafter $(STOCKS)/include/os9 -I$(FN_C) -I$(FN_HOST) -o $@ $(STOCKS)/src/*.c \
+	  $(STOCKS)/src/os9/conio.c $(STOCKS)/src/os9/init.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
 
 build/tetris: games/tetris.c
 	mkdir -p build
@@ -242,4 +261,4 @@ clean:
 	rm -rf build
 
 FORCE:
-.PHONY: all clean install fujinet-disk stories manual FORCE
+.PHONY: all clean install fujinet-disk fujinet-lib stories manual FORCE

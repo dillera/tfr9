@@ -209,8 +209,9 @@ from a NitrOS-9 source tree.  It produces:
 `modules/` holds TFR/911H-specific modules, which take precedence over
 NitrOS-9's, as do the FujiNet's modules and definitions in `fujinet/`.
 The FujiNet commands are built from `fujinet/cmds/`, and `fnnews` and
-`fnstocks` from the C in `fujinet/news/`, `fujinet/stocks/` and
-`fujinet/c/`.  The modules in `OS9Boot` and the commands on the disk are
+`fnstocks` from the C in `fujinet/news/` and `fujinet/stocks/`, with the
+terminal in `fujinet/c/` and fujinet-lib for NitrOS-9 in
+`fujinet/fujinet-lib/` (`make fujinet-lib`).  The modules in `OS9Boot` and the commands on the disk are
 listed at the end of `rmake-l2.tcl`.
 
 ### Prerequisites

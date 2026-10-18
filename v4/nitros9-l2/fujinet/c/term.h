@@ -36,6 +36,20 @@ byte term_wherey(void);
 void term_clrscr(void);
 void term_clreol(void);     // to the end of the row, at the cursor
 void term_reverse(byte on); // what follows is in reverse video
+void term_color(byte fg, byte bg);  // what follows is in these colors
+
+// Colors for term_color(); 0 is the terminal's own.  TC_BRIGHT plus a
+// color (red to white) is its bright version, for the foreground.
+#define TC_DEFAULT 0
+#define TC_BLACK   1
+#define TC_RED     2
+#define TC_GREEN   3
+#define TC_YELLOW  4
+#define TC_BLUE    5
+#define TC_MAGENTA 6
+#define TC_CYAN    7
+#define TC_WHITE   8
+#define TC_BRIGHT  7
 void term_invert_row(byte y);   // flips row y between normal and reverse
 void term_cursor(byte on);
 void term_bell(void);

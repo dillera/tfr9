@@ -29,22 +29,36 @@ TopicState topics_reset(void)
 
 TopicState topics_display(void)
 {
+    // A block of color by each topic, as on the CoCo's 32 column screen.
+    static const byte topic_colors[9] = {
+        TC_RED, TC_YELLOW, TC_GREEN, TC_CYAN, TC_BLUE,
+        TC_MAGENTA, TC_WHITE, TC_RED, TC_GREEN
+    };
+
     clear_screen(1);
 
-    gotoxy(0, 0);
-    printf("%*s%s%*s", (int)((textMode - 20) >> 1), "", "FUJINET  NEWS TOPICS", (int)((textMode - 20) >> 1), "");
-    bar(0);
+    title_bar(0, "FUJINET  NEWS TOPICS");
+    gotoxy(0, 2);
+    term_color(TC_CYAN, TC_DEFAULT);
+    printf("%*s", (int)(textMode + 38) / 2, "The day's stories, through the FujiNet");
+    rule(MENU_Y_24 - 2, textMode);
 
     for (byte i = 0; i < 9; i++)
     {
         gotoxy(0, i + MENU_Y_24);
-        printf("%-*s", (int)(textMode - 1), topicStrings[i]);
+        term_color(TC_DEFAULT, topic_colors[i]);
+        printf("  ");
+        term_color(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
+        printf("%-*s", (int)(textMode - 3), topicStrings[i]);
     }
 
-    print_reverse(0, 22, "esc QUIT", true);
+    rule(MENU_Y_24 + 10, textMode);
+    print_reverse(0, 22, "esc QUIT   i ABOUT", true);
 
     gotoxy(0, 23);
+    term_color(TC_YELLOW, TC_DEFAULT);
     printf("%-*s", (int)(textMode - 1), "SELECT WITH ARROWS, THEN ENTER.");
+    term_color(TC_DEFAULT, TC_DEFAULT);
 
     return TOPICS_MENU;
 }
@@ -70,6 +84,16 @@ TopicState topics_menu()
             return TOPICS_SELECT;
         case BREAK:
             return TOPICS_EXIT;
+        case 'I':
+        case 'i':
+            clear_screen(1);
+            title_bar(0, "FUJINET  NEWS");
+            show_about(4);
+            gotoxy((textMode - 27) >> 1, 22);
+            printf("<Press any key to continue>");
+            waitkey(1);
+            topicChanged = 1;
+            return TOPICS_DISPLAY;
         }
     }
 }

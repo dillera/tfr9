@@ -221,15 +221,18 @@ ArticlesState articles_display(void)
         {
             y = headline_locations_80[i] - 1;
 
-            gotoxy(0, y);
-            printf("%*s", (int)textMode, _articles[i].timestamp);
+            // A rule between stories, ending in the story's time.
+            rule(y, (byte)(textMode - strlen(_articles[i].timestamp) - 1));
+            putchar(' ');
+            term_color(TC_YELLOW, TC_DEFAULT);
+            printf("%s", _articles[i].timestamp);
             gotoxy(0, y + 1);
+            term_color(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
             printf("%-*s", headline_length, articles_display_headline(_articles[i].headline));
+            term_color(TC_DEFAULT, TC_DEFAULT);
         }
 
-        gotoxy(0, menu_line - 1);
-        printf("%-*s", (int)(textMode - 1), format_topic_line(page, topicStrings[selectedTopic], textMode));
-        bar(menu_line - 1);
+        title_bar(menu_line - 1, format_topic_line(page, topicStrings[selectedTopic], textMode));
 
         byte base = headline_locations_80[article_cursor_pos];
         for (byte r = 0; r < 2; r++)

@@ -62,13 +62,20 @@ EOF
 ./build.sh -y -l platformio.local-tfr.ini -f      # and its web UI, the first time
 ```
 
-The firmware needs one fix that is not upstream yet (branch
-`drivewire-dwinit-version` in dillera/fujinet-firmware): `OP_DWINIT` is
-followed by the client's driver version byte, which the FujiNet did not
-read.  It then took that byte for the next opcode, and threw away what was
-already waiting behind it.  On a real CoCo the next command arrives later
-and survives; at 921600 baud it is already there, and is lost, and the
-6309 waits for ever for its reply.
+The firmware must read the client's driver version byte that follows
+`OP_DWINIT`; otherwise it takes that byte for the next opcode and throws
+away what was already waiting behind it, which at 921600 baud is the next
+command, and the 6309 waits for ever for its reply.  fujinet-firmware does
+since PR 2027 (merged October 2026).
+
+On a DevKitC the firmware also needs a fix that is not upstream yet
+(branch `coco-devkitc-no-button-c` in dillera/fujinet-firmware): the pin
+map gave a Safe Reset button to GPIO 14, which a DevKitC leaves
+unconnected, with no pull-up.  The floating pin picks up the UART beside
+it and reads as presses, each of which restarts the FujiNet; under the
+disk traffic of booting from it (`l2fn`), that is every few seconds, and a
+request lost in a restart hangs the 6309.  The FujiNet's log shows
+`BUTTON_C: SHORT PRESS` and `ACTION: Reboot`.
 
 At `TCL>`, `fujinet` checks the link (it asks the FujiNet the time) and
 `fujinet stats` prints the byte counters.  While NitrOS-9 runs, the
@@ -159,34 +166,36 @@ the tether's terminal, which should be at least 80 by 24.
 ## Programs in C
 
 `fnnews` and `fnstocks` are the CoCo versions of two FujiNet programs,
-written in C against fujinet-lib and compiled with CMOC, which can
-compile for OS-9.  `c/` has what they need from NitrOS-9:
+written in C against fujinet-lib, the FujiNet's C library, and compiled
+with CMOC, which can compile for OS-9.
 
-* `c/fujinet.c`: the fujinet-lib calls they use (`network_open`,
-  `network_status`, `network_read`, `network_json_parse`,
-  `network_json_query`, `network_close`, and app keys), each made of
-  `SS.Fuji` exchanges on `/N1`, as `lib/fnnet.as` makes them, with the
-  same names and arguments as fujinet-lib's (`fujinet-network.h`,
-  `fujinet-fuji.h`).
-* `c/term.c`: the tether's terminal, with raw keys (Esc and ^C are the
+* `fujinet-lib/` is fujinet-lib for NitrOS-9: FujiNetWIFI/fujinet-lib
+  v5.0.1 (its `include/` and `common/`, unchanged) with a bus for
+  NitrOS-9, `bus/os9`, which makes each exchange with the FujiNet one
+  `SS.Fuji` call on `/N1`.  Every `fuji_*` and `network_*` call is there,
+  so other CoCo fujinet-lib programs can be built the same way.  Its
+  README tells how it works; `make fujinet-lib` builds
+  `build/fnlib/libfujinet.a`.
+* `c/term.c` is the tether's terminal: raw keys (Esc and ^C are the
   CoCo's BREAK, and the arrows arrive as they are, with bit 7 of `$FF42`
-  set), and a copy of the screen, so that a row can be shown in reverse
-  video and back again, which the CoCo programs do by flipping the
-  attribute bytes in screen memory.
+  set), ANSI colors, and a copy of the screen, so that a row can be shown
+  in reverse video and back again, which the CoCo programs do by flipping
+  the attribute bytes in screen memory.
 
 `news/` is the CoCo client of
 [fujinet-news](https://github.com/FujiNetWIFI/fujinet-news)
-(`clients/src/coco`, commit b351d24) with the CoCo 3's 80-column layout;
-its screen code became `news/screen.c`.  `stocks/` is
+(`clients/src/coco`, commit b351d24) with the CoCo 3's 80-column layout,
+in color; its screen code became `news/screen.c`.  `I` shows where the
+news comes from.  `stocks/` is
 [fujinet-stocks](https://github.com/FujiNetWIFI/fujinet-stocks) (commit
 1ececd8) with an `os9` platform (`include/os9/`, `src/os9/`) beside its
-`coco` one; its own files changed in a few lines (`BUILD_OS9`: an 80-column
-screen, Esc for BREAK, and the ticker drawn only when it moves).  The stock
-list is in the same app keys as on other computers.
+`coco` one; its own files changed in a few lines (`BUILD_OS9`: an
+80-column screen, Esc for BREAK, colors, and the ticker drawn only when it
+moves).  The stock list is in the same app keys as on other computers.
 
 For trying a change without the board, `make build/fnnews-host` and
 `make build/fnstocks-host` build them for this computer, with
-`c/fujinet-host.c` (curl and python3) as the FujiNet.
+`c/host/fujinet-host.c` (curl and python3) as the FujiNet.
 
 ## How it works
 

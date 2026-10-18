@@ -21,12 +21,22 @@
 #  define GIT_VERSION "unknown"
 #endif
 
+/* NitrOS-9: colors on the tether's terminal (term.h); elsewhere, none. */
+#if defined(BUILD_OS9)
+#  define COLOR(fg, bg)  term_color((fg), (bg))
+#else
+#  define COLOR(fg, bg)
+#endif
+
 /** @brief Scroll buffer and state for the ticker tape at row 0. */
 #define SCROLL_BUF_LEN  384
 static char          scroll_buf[SCROLL_BUF_LEN];
 static unsigned int  scroll_len  = 0;
 static unsigned int  scroll_pos  = 0;
 static uint8_t frame_count = 0;
+#if defined(BUILD_OS9)
+static uint8_t       scroll_col[SCROLL_BUF_LEN];   /* each character's color */
+#endif
 
 /* Shared symbol/scratch buffer.  draw_slot, draw_lookup_row, edit_stock,
  * lookup_screen, and show_stock_info are all mutually exclusive (each is
@@ -59,6 +69,21 @@ static void fill_spaces(uint8_t n)
 void draw_centered(const char *s)
 {
     fill_spaces((uint8_t)((SCREEN_WIDTH - strlen(s)) / 2));
+#if defined(BUILD_OS9)
+    /* The keys, <X>, black on cyan, in a line of cyan; anything else in
+     * the color set before. */
+    if (strchr(s, '<')) {
+        for (; *s; s++) {
+            if (*s == '<')
+                COLOR(TC_BLACK, TC_CYAN);
+            putchar(*s);
+            if (*s == '>')
+                COLOR(TC_CYAN, TC_DEFAULT);
+        }
+        COLOR(TC_DEFAULT, TC_DEFAULT);
+        return;
+    }
+#endif
     printf("%s", s);
 }
 
@@ -112,7 +137,9 @@ void set_progress_message(const char *msg)
     strncpy(progress_msg, msg, sizeof(progress_msg) - 1);
     progress_msg[sizeof(progress_msg) - 1] = '\0';
     gotoxy(0, TICKER_ROW);
+    COLOR(TC_BRIGHT + TC_YELLOW, TC_DEFAULT);
     printf("%s", progress_msg);
+    COLOR(TC_DEFAULT, TC_DEFAULT);
 }
 
 /**
@@ -126,7 +153,9 @@ void update_progress_message(void)
         progress_msg[len + 1] = '\0';
     }
     gotoxy(0, TICKER_ROW);
+    COLOR(TC_BRIGHT + TC_YELLOW, TC_DEFAULT);
     printf("%s", progress_msg);
+    COLOR(TC_DEFAULT, TC_DEFAULT);
 }
 
 /* -----------------------------------------------------------------------
@@ -142,16 +171,21 @@ void update_progress_message(void)
 void draw_app_name(bool show_wait, bool show_version)
 {
     gotoxy(0, MENU_ROW1 - 2);
+    COLOR(TC_BRIGHT + TC_YELLOW, TC_DEFAULT);
     draw_centered("*** FujiNet Stocks ***");
 
+    COLOR(TC_DEFAULT, TC_DEFAULT);
     clear_line(MENU_ROW1 - 1);
     if (show_wait) {
         gotoxy(0, MENU_ROW1 - 1);
+        COLOR(TC_BRIGHT + TC_GREEN, TC_DEFAULT);
         draw_centered("*** Please Wait ***");
     } else if (show_version) {
         gotoxy(0, MENU_ROW1 - 1);
+        COLOR(TC_CYAN, TC_DEFAULT);
         draw_centered("Version: " GIT_VERSION);
     }
+    COLOR(TC_DEFAULT, TC_DEFAULT);
 }
 
 /**
@@ -167,6 +201,7 @@ static void draw_menu(bool show_stocks, bool lookup)
     clear_line(MENU_ROW2);
 
     gotoxy(0, MENU_ROW1);
+    COLOR(TC_CYAN, TC_DEFAULT);
     if (lookup)
         draw_centered("Arrows:Select  <ENTER>:Choose");
     else if (show_stocks)
@@ -175,6 +210,7 @@ static void draw_menu(bool show_stocks, bool lookup)
         draw_centered("<S>how <L>ookup");
 
     gotoxy(0, MENU_ROW2);
+    COLOR(TC_CYAN, TC_DEFAULT);
     if (lookup)
         draw_centered("<" BREAK_KEY_NAME ">:Return");
     else if (show_stocks)
@@ -201,17 +237,53 @@ static void draw_ticker_row(void)
         c = scroll_buf[idx];
         if ((uint8_t)c < 0x20)
             c = ' ';
+        COLOR(scroll_col[idx], TC_BLUE);
         putchar(c);
         if (++idx >= scroll_len)
             idx = 0;
     }
+    COLOR(scroll_col[idx], TC_BLUE);
     /* Last cell via cputcxy: avoids cursor-advance at row end on cc65 targets.
      * On CoCo/MSDOS, cputcxy is defined as gotoxy+putchar. */
     c = scroll_buf[idx];
     if ((uint8_t)c < 0x20)
         c = ' ';
     cputcxy((uint8_t)(SCREEN_WIDTH - 1), TICKER_ROW, c);
+    COLOR(TC_DEFAULT, TC_DEFAULT);
 }
+
+#if defined(BUILD_OS9)
+/**
+ * @brief Color the ticker tape: "SYMBOL $PRICE +PCT%", symbol bright
+ * white, price yellow, the change green if up and red if down.
+ */
+static void color_ticker(void)
+{
+    unsigned int i;
+    uint8_t      token = 0, spaces = 0, color = TC_WHITE;
+
+    for (i = 0; i < scroll_len; i++) {
+        if (scroll_buf[i] == ' ') {
+            spaces++;
+            scroll_col[i] = TC_WHITE;
+            continue;
+        }
+        if (spaces || i == 0) {
+            /* A new word: more than one space before it starts a stock. */
+            token = (spaces > 1 || i == 0) ? 0 : token + 1;
+            spaces = 0;
+            if (token == 0)
+                color = TC_BRIGHT + TC_WHITE;
+            else if (token == 1)
+                color = TC_BRIGHT + TC_YELLOW;
+            else
+                color = scroll_buf[i] == '-' ? TC_BRIGHT + TC_RED
+                      : scroll_buf[i] == '+' ? TC_BRIGHT + TC_GREEN : TC_WHITE;
+        }
+        scroll_col[i] = color;
+    }
+}
+#endif
 
 /* -----------------------------------------------------------------------
  * Stock list
@@ -237,10 +309,13 @@ static void draw_slot(uint8_t i, bool highlighted)
     }
 
     gotoxy(stock_coords[i].x, stock_coords[i].y);
+    COLOR(TC_CYAN, TC_DEFAULT);
     printf("%2d: ", i + 1);
+    COLOR(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
     revers(highlighted);
     cputs(sym_buf);
     revers(0);
+    COLOR(TC_DEFAULT, TC_DEFAULT);
 }
 
 /**
@@ -280,9 +355,11 @@ static void draw_lookup_row(uint8_t i, bool highlighted)
     if (highlighted) strupr(line);
 #endif
     gotoxy(0, 4 + i);
+    COLOR(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
     revers(highlighted);
     cputs(line);
     revers(0);
+    COLOR(TC_DEFAULT, TC_DEFAULT);
 }
 
 /* -----------------------------------------------------------------------
@@ -371,6 +448,24 @@ static void format_phone(const char *raw, char *out, uint8_t out_len)
  * ----------------------------------------------------------------------- */
 
 /**
+ * @brief Print a label and its value on the info screen.
+ *
+ * @param row   Row to print on, or 255 to go on from the cursor.
+ * @param label The label, e.g. "Symbol  : ".
+ * @param value The value.
+ */
+static void show_field(uint8_t row, const char *label, const char *value)
+{
+    if (row != 255)
+        gotoxy(0, row);
+    COLOR(TC_CYAN, TC_DEFAULT);
+    printf("%s", label);
+    COLOR(TC_BRIGHT + TC_WHITE, TC_DEFAULT);
+    printf("%s", value);
+    COLOR(TC_DEFAULT, TC_DEFAULT);
+}
+
+/**
  * @brief Display the detail info screen for the selected stock.
  *
  * Uses global stock_info (filled by get_stock_info()).
@@ -388,26 +483,28 @@ static void show_stock_info(uint8_t selected)
     clear_line(MENU_ROW1 - 1);
     clear_line(TICKER_ROW);
     gotoxy(0, TICKER_ROW);
+    COLOR(TC_BRIGHT + TC_YELLOW, TC_DEFAULT);
     draw_centered("*** Stock Information ***");
+    COLOR(TC_DEFAULT, TC_DEFAULT);
 
-    gotoxy(0, 5);  printf("Symbol  : %s",  stock_info.symbol);
-    gotoxy(0, 6);  printf("Company : %s",  stock_info.name);
-    gotoxy(0, 7);  printf("Exchange: %s",  stock_info.exchange);
-    gotoxy(0, 8);  printf("Country : %s  Currency: %s",
-                          stock_info.country, stock_info.currency);
-    gotoxy(0, 9);  printf("Industry: %s",  stock_info.industry);
-    gotoxy(0, 10); printf("IPO     : %s",  stock_info.ipo);
+    show_field(5, "Symbol  : ", stock_info.symbol);
+    show_field(6, "Company : ", stock_info.name);
+    show_field(7, "Exchange: ", stock_info.exchange);
+    show_field(8, "Country : ", stock_info.country);
+    show_field(255, "  Currency: ", stock_info.currency);
+    show_field(9, "Industry: ", stock_info.industry);
+    show_field(10, "IPO     : ", stock_info.ipo);
 
     format_large_num(stock_info.market_cap, sym_buf, sizeof(sym_buf));
-    gotoxy(0, 11); printf("Mkt Cap : %s",  sym_buf);
+    show_field(11, "Mkt Cap : ", sym_buf);
 
     format_large_num(stock_info.shares_outstanding, sym_buf, sizeof(sym_buf));
-    gotoxy(0, 12); printf("Shares  : %s",  sym_buf);
+    show_field(12, "Shares  : ", sym_buf);
 
     format_phone(stock_info.phone, sym_buf, sizeof(sym_buf));
-    gotoxy(0, 13); printf("Phone   : %s",  sym_buf);
+    show_field(13, "Phone   : ", sym_buf);
 
-    gotoxy(0, 14); printf("Web     : %s",  stock_info.weburl);
+    show_field(14, "Web     : ", stock_info.weburl);
 
     clear_line(MENU_ROW1);
     gotoxy(0, MENU_ROW1);
@@ -501,8 +598,7 @@ static bool lookup_screen(uint8_t return_slot, bool update_stocks)
         return false;
     }
 
-    gotoxy(0, 2);
-    printf("Results for: %s", sym_buf);
+    show_field(2, "Results for: ", sym_buf);
 
     for (i = 0; i < lookup_results.count; i++)
         draw_lookup_row(i, i == lk_sel);
@@ -631,6 +727,9 @@ void main_loop(void)
         if (need_scroll_rebuild) {
             build_scroll_string(scroll_buf, SCROLL_BUF_LEN);
             scroll_len          = (unsigned int)strlen(scroll_buf);
+#if defined(BUILD_OS9)
+            color_ticker();
+#endif
             scroll_pos          = 0;
             need_scroll_rebuild = false;
         }

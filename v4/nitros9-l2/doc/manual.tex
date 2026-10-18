@@ -581,7 +581,7 @@ for each kind of computer. For the TFR/911H it is built for the board
 Centipede, a Color Computer cartridge with an RP2350 on it. That build
 selects:
 
-\begin{keys}[1.3in]
+\begin{keys}[1.4in]
 \texttt{BUILD\_COCO} & The Color Computer's devices.\\
 \texttt{DRIVEWIRE} & DriveWire as the bus: the protocol a CoCo uses to
 reach a DriveWire server over a serial line.\\
@@ -599,10 +599,17 @@ network, the eight host slots, the device slots---are kept in
 \file{fnconfig.ini}, on the SD card and in flash.
 
 The firmware must read the version byte that NitrOS-9 sends after
-\texttt{OP\_DWINIT} (see ``DriveWire'' below). At this writing the fix is
-in pull request 2027 to fujinet-firmware, and in the branch
-\texttt{drivewire-dwinit-version} of \file{dillera/fujinet-firmware}.
-\file{v4/nitros9-l2/fujinet/README.md} tells how to build and flash it.
+\texttt{OP\_DWINIT} (see ``DriveWire'' below); it does since pull request
+2027 to fujinet-firmware, merged in October 2026. On a DevKitC it must
+also have no Safe Reset button. The board's pin map gave the button GPIO~14,
+which a DevKitC leaves unconnected, and the firmware sets no pull-up on
+it, so the pin floats, picks up the UART beside it, and reads as presses;
+each one restarts the FujiNet, and under heavy disk traffic, as when
+NitrOS-9 boots from it, that is every few seconds. The fix, which takes the
+button out of the DevKitC's pin map, is in the branch
+\texttt{coco-devkitc-no-button-c} of \file{dillera/fujinet-firmware}.
+\file{v4/nitros9-l2/fujinet/README.md} tells how to build and flash the
+firmware.
 
 \section{How the FujiNet Connects to the TFR/911H}
 
@@ -1237,44 +1244,65 @@ interface.
 Many of the FujiNet's programs for other computers are written in C,
 against \emph{fujinet-lib}, the FujiNet's C library, which has the same
 calls on every computer. Those for the Color Computer are compiled with
-CMOC, which compiles for OS-9 too. \file{fujinet/c}, in
-\file{v4/nitros9-l2}, has the calls of fujinet-lib that such programs use,
-made for NitrOS-9, and a terminal to draw on. With them, two of the Color
-Computer's programs became NitrOS-9 commands, their logic unchanged:
+CMOC, which compiles for OS-9 too. \file{fujinet/fujinet-lib}, in
+\file{v4/nitros9-l2}, is fujinet-lib for NitrOS-9, and \file{fujinet/c}
+is a terminal to draw on. With them, two of the Color Computer's programs
+became NitrOS-9 commands, their logic unchanged:
 \rp{fnnews}{1}, from \texttt{fujinet-news}, and \rp{fnstocks}{1}, from
 \texttt{fujinet-stocks}.
 
 \subsection{fujinet-lib for NitrOS-9}
 
-\file{fujinet.c} makes each call out of \texttt{SS.Fuji} exchanges on
-\file{/N1}, the ones \file{fnnet.as} and \file{fuji.as} make:
+fujinet-lib keeps what is the same on every computer in \file{common},
+and what each computer's bus needs in \file{bus/}\var{platform}. On a CoCo
+the bus calls the DriveWire ROM: \texttt{dwwrite} sends bytes and
+\texttt{dwread} reads the reply, and the rest of the CoCo's
+bus---\texttt{fuji\_bus\_call}, \texttt{bus\_ready}, the calls for a
+command's status and its data---is built on those two.
+\file{fujinet/fujinet-lib} has fujinet-lib v5.0.1's \file{include} and
+\file{common}, unchanged, and a bus for NitrOS-9, \file{bus/os9}, made from
+the CoCo's:
 
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{1.45in}>{\raggedright\arraybackslash}X@{}}
-\toprule
-\textbf{Call} & \textbf{On the wire}\\
-\midrule
-\texttt{network\_open} & \texttt{'O'} with the spec, then \file{\$02}\\
-\texttt{network\_status} & \texttt{'S'}, then \file{\$01} for four bytes: the bytes waiting (high byte first), whether it is connected, and the last error (1 for none, 136 at the end)\\
-\texttt{network\_read} & \texttt{'S'}, then \texttt{'R'} and \file{\$01} for what is waiting, at most 480 bytes at a time, until it has the length asked for or the end\\
-\texttt{network\_json\_parse} & \file{\$FC} with 1, and \texttt{'P'}, each followed by \file{\$02}\\
-\texttt{network\_json\_query} & \texttt{'Q'} with the path, then \texttt{'R'} and \file{\$01} for 64 bytes; the value ends at the first zero, carriage return, or line feed\\
-\texttt{network\_close} & \texttt{'C'}, then \file{\$02}\\
-\texttt{fuji\_read\_appkey}, \texttt{fuji\_write\_appkey} & \file{\$DC} to open an \emph{app key}, then \file{\$DD} to read it or \file{\$DE} to write it: up to 64 bytes that the FujiNet keeps on its SD card for a program\\
-\bottomrule
-\end{tabularx}
+\begin{keys}[1.4in]
+\file{ssfuji.c} & Opens \file{/N1}, and makes the \texttt{SS.Fuji}
+calls.\\
+\texttt{dwwrite} & Queues its bytes.\\
+\texttt{dwread} & Sends what is queued and reads the reply, in one
+\texttt{SS.Fuji} call. Every fujinet-lib command ends with a read, of its
+status at least, so nothing is left queued.\\
+\file{network\_bus.c} & Reads at most 512 bytes at a time, as much as
+\texttt{SS.Fuji} carries; \texttt{network\_read} asks again for the
+rest.\\
+\file{fuji\_bus\_call.s} & The CoCo's, made position independent, as an
+OS-9 module must be: \texttt{LBSR} for its calls, its variables through
+\texttt{Y}, and its table through \texttt{PCR}.\\
+\file{network\_proceed.c} & A becker port has no proceed line: poll
+\texttt{network\_status} instead.\\
+\end{keys}
 
-One thing is done differently from \file{fnnet.as}:
-\texttt{network\_json\_parse} asks for the outcome of \texttt{'P'} at
-once, instead of sleeping ten seconds first. The FujiNet does not read the
-question until it has fetched and parsed the document, and the becker
-port has no timeout, so the call takes as long as the fetch and no longer.
-NitrOS-9 stops while it waits.
+The rest of the bus is the CoCo's, unchanged, and so is the protocol on
+the wire, since the FujiNet runs the same firmware. Every \texttt{fuji\_*}
+and \texttt{network\_*} call of fujinet-lib is there---HTTP and JSON, TCP
+and UDP, app keys (up to 64 bytes the FujiNet keeps on its SD card for a
+program), host and device slots, directories, the clock---and a program
+written with fujinet-lib for the CoCo builds for NitrOS-9. \file{README.md}
+in the directory tells how to bring in a newer fujinet-lib.
+
+A call is a few \texttt{SS.Fuji} exchanges. Each command is preceded by
+\texttt{bus\_ready} (\file{\$E2 \$00}, which the FujiNet answers with one
+byte) and followed by \file{\$02}, its outcome; \texttt{network\_open},
+for instance, sends \texttt{'O'} with its spec. fujinet-lib asks for the
+outcome of a JSON parse (\texttt{'P'}) at once, where \file{fnnet.as}
+sleeps ten seconds first. The FujiNet does not read the question until it
+has fetched and parsed the document, and the becker port has no timeout,
+so the call takes as long as the fetch and no longer. NitrOS-9 stops while
+it waits.
 
 These are the four calls of the last section, in C:
 \begin{exsmall}
 #include "fujinet-network.h"
 
-char city[NETWORK_JSON_QUERY_MAX];
+char city[64];
 char url[] = "N:http://ip-api.com/json/?fields=status,city";
 
 if (network_open(url, OPEN_MODE_HTTP_GET, OPEN_TRANS_NONE) == FN_ERR_OK
@@ -1290,7 +1318,9 @@ cursor, and reverse video for the line that is selected, made by flipping
 the attribute bytes of a row in screen memory. \file{term.c} draws the same
 things on the tether's terminal with ANSI sequences. It keeps a copy of the
 screen, a byte for each place, with bit~7 set where it is in reverse video,
-so that \texttt{term\_invert\_row} can flip a row and send it again. It
+and a byte of its colors, so that \texttt{term\_invert\_row} can flip a
+row and send it again; \texttt{term\_color} sets the colors of what
+follows, from the terminal's eight and their bright versions. It
 reads keys raw from \file{/term}, sets bit~7 of \file{\$FF42}, as
 \rp{vi}{1} does, so that the arrow keys arrive as the tether sends them,
 and takes \key{Esc}, and \key{Ctrl/C}, which arrives as a signal, as the
@@ -1307,7 +1337,9 @@ and height in the URL:
 N:HTTPS://FUJINET.ONLINE/8bitnews/news.php?t=lf&ps=80x21&l=6&p=1&c=top
 \end{exsmall}
 The CoCo's screen code, \file{cocotext.c} and \file{bar.c}, became
-\file{fujinet/news/screen.c}, a page of calls to \file{term.c}.
+\file{fujinet/news/screen.c}, a page of calls to \file{term.c}, which also
+draws the title bars, rules, and colors, and the page \key{I} shows,
+about the program and the server.
 
 \cmd{fnstocks} is \texttt{fujinet-stocks}, written for many computers at
 once: its own code calls the \texttt{conio} routines and the C library,
@@ -1316,21 +1348,28 @@ them. NitrOS-9 has one, \file{os9}, beside \file{coco}. Its \file{conio.h}
 sends \texttt{gotoxy}, \texttt{revers}, \texttt{cputs}, and the rest to
 \file{term.c}; its \file{time.h} makes \texttt{clock} from
 \texttt{F\$Time}. Of the program's own files, a few lines changed: an
-80-column screen, \key{Esc} as the name of \key{BREAK}, and the ticker
+80-column screen, \key{Esc} as the name of \key{BREAK}, the ticker
 drawn only when it moves, since on a terminal each row drawn goes down the
-wire. The stock list is kept in two app keys of creator \file{\$0901}, the
+wire, and colors, through a \texttt{COLOR} macro that is empty on other
+computers. The stock list is kept in two app keys of creator \file{\$0901}, the
 ones the other computers' versions use, so a FujiNet shared between
 computers has one list.
 
 \subsection{Building and testing}
 
-The Makefile compiles each C file with \texttt{cmoc --os9 -c}, and links
-each program with the two files of \file{fujinet/c}:
+\type{make fujinet-lib} compiles fujinet-lib and puts it in
+\file{build/fnlib/libfujinet.a}. The Makefile compiles each program's C
+files with \texttt{cmoc --os9 -c}, and links them with \file{term.o} and
+the library, from which only what the program uses is taken:
 \begin{exsmall}
-$ cmoc --os9 --function-stack=0 --add-os9-stack-space=2048 -DBUILD_OS9 -Ifujinet/c \textbackslash{}
-      -c -o build/fn/news/main.o fujinet/news/main.c
-$ cd build/fn && cmoc --os9 -o fnnews news/*.o c/term.o c/fujinet.o
+$ cmoc --os9 --cpp=$PWD/fujinet/fujinet-lib/cmoc-cpp -Ifujinet/fujinet-lib/include -Ifujinet/c \textbackslash{}
+      --function-stack=0 --add-os9-stack-space=2048 -DBUILD_OS9 -c -o build/fn/news/main.o \textbackslash{}
+      fujinet/news/main.c
+$ cd build/fn && cmoc --os9 -o fnnews news/*.o c/term.o -L../fnlib -lfujinet
 \end{exsmall}
+fujinet-lib indents some of its preprocessor directives, which macOS's
+\cmd{cpp}, a traditional preprocessor, skips; \file{cmoc-cpp} gives CMOC
+the C compiler's own preprocessor instead.
 The stack space is set when the file with \texttt{main} is compiled; given
 when linking, it is ignored, and the program has no room for its stack.
 CMOC's OS-9 programs keep their stack above their variables, in the same
@@ -1339,8 +1378,8 @@ CMOC's \texttt{vsprintf} does not work in an OS-9 program (in version
 0.1.97 it writes to standard output, and the stack then overflows);
 \texttt{printf} and \texttt{sprintf} do.
 \type{make build/fnnews-host} and \type{make build/fnstocks-host} build
-them for the computer the tether runs on, with \file{fujinet-host.c} in
-place of \file{fujinet.c}: \cmd{curl} fetches, \cmd{python3} answers the
+them for the computer the tether runs on, with
+\file{fujinet/c/host/fujinet-host.c} in place of fujinet-lib: \cmd{curl} fetches, \cmd{python3} answers the
 JSON queries, and app keys are files. The screens are the same, so a
 change can be tried there before it goes to the board.
 
@@ -1478,8 +1517,9 @@ screen. It is the Color Computer's news reader, from
 \texttt{fujinet-news} (see Chapter~2). It begins with nine topics: top
 stories, world news, business, science, technology, health,
 entertainment, politics, and sports. \key{Up} and \key{Down} choose one,
-and \key{Enter} shows its headlines, six to a page, newest first, each
-with its time:
+\key{Enter} shows its headlines, six to a page, newest first, each with
+its time, and \key{I} shows where the news comes from: the server, and
+the program's versions:
 
 \begin{keys}[1in]
 \key{Up}, \key{Down} & Choose a headline; past the first or the last, turn
@@ -2233,7 +2273,7 @@ so they make full rows, which disappear. The game draws in color on the
 terminal the tether runs in, shows the next piece and a ghost of where the
 falling one will land, and deals the seven pieces from a shuffled bag, so
 no piece is ever long in coming.
-\begin{keys}[1.3in]
+\begin{keys}[1.4in]
 \key{Left} \key{Right}, \texttt{a d} & Move the piece.\\
 \key{Up}, \texttt{w} & Turn it.\\
 \key{Down}, \texttt{s} & Drop it a row.\\
@@ -2408,7 +2448,7 @@ When the TFR/911H starts, its firmware waits at the \texttt{TCL>} prompt,
 a Tcl interpreter that runs on the RP2350B. Besides the Tcl language, it
 has these commands:
 
-\begin{keys}[1.3in]
+\begin{keys}[1.4in]
 \cmd{l2} & Boot NitrOS-9 Level 2 from EmuDsk drive~0.\\
 \cmd{l2fn} [\texttt{-n}] & Mount the image in the FujiNet's device slot~0
 and boot NitrOS-9 Level 2 from it; with \texttt{-n}, boot from whatever
@@ -2583,6 +2623,10 @@ Finnhub, and every screen read back with a terminal emulator, reverse
 video and all: the topics, headlines, story pages and their information,
 going to a page; stocks added by symbol and by lookup, company
 information, deleting, and the list kept between runs.
+\item The same two programs were then built on fujinet-lib for NitrOS-9,
+and their sessions run again on the board, booted both from the tether's
+disk and from the FujiNet; a session booted from the FujiNet is what
+showed the FujiNet restarting (see Chapter~2).
 \item \texttt{term\_printf}'s formatting gives what the C library's
 \texttt{printf} gives, for each conversion the programs use.
 \item On the board, through the FujiNet, the same sessions: a page of
