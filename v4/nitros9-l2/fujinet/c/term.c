@@ -283,17 +283,21 @@ static byte rows[TERM_ROWS];    // each row's state:
 #define ROW_BLANK 1         // all spaces, in the terminal's colors
 #define ROW_DIRTY 2         // written in this frame
 
-// The graphics characters (TG_*), kept in the copy as 1 to 26.
-#define NGLYPHS 26
-static const char glyphs[NGLYPHS][4] = {
-    "\xE2\x94\x80", "\xE2\x94\x82", "\xE2\x94\x8C", "\xE2\x94\x90",
-    "\xE2\x94\x94", "\xE2\x94\x98", "\xE2\x94\xA4", "\xE2\x94\x9C",
-    "\xE2\x94\xAC", "\xE2\x94\xB4", "\xE2\x94\xBC",
-    "\xE2\x96\x8C", "\xE2\x96\x90", "\xE2\x96\x84", "\xE2\x96\x80",
-    "\xE2\x96\x96", "\xE2\x96\x97", "\xE2\x96\x98", "\xE2\x96\x9D",
-    "\xE2\x96\x9C", "\xE2\x96\x9B", "\xE2\x96\x9F", "\xE2\x96\x99",
-    "\xE2\x96\x88", "\xE2\x96\x9A", "\xE2\x96\x9E"
-};
+// The graphics characters (TG_*), kept in the copy as 1 to 27: their
+// UTF-8, four bytes to each (one string, so that CMOC keeps it in the
+// module).  A program may have its own instead (term_glyphs()).
+#define NGLYPHS 27
+static const char tg_glyphs[] =
+    "\xE2\x94\x80" "\0" "\xE2\x94\x82" "\0" "\xE2\x94\x8C" "\0" "\xE2\x94\x90" "\0"
+    "\xE2\x94\x94" "\0" "\xE2\x94\x98" "\0" "\xE2\x94\xA4" "\0" "\xE2\x94\x9C" "\0"
+    "\xE2\x94\xAC" "\0" "\xE2\x94\xB4" "\0" "\xE2\x94\xBC" "\0"
+    "\xE2\x96\x8C" "\0" "\xE2\x96\x90" "\0" "\xE2\x96\x84" "\0" "\xE2\x96\x80" "\0"
+    "\xE2\x96\x96" "\0" "\xE2\x96\x97" "\0" "\xE2\x96\x98" "\0" "\xE2\x96\x9D" "\0"
+    "\xE2\x96\x9C" "\0" "\xE2\x96\x9B" "\0" "\xE2\x96\x9F" "\0" "\xE2\x96\x99" "\0"
+    "\xE2\x96\x88" "\0" "\xE2\x96\x9A" "\0" "\xE2\x96\x9E" "\0"
+    "\xC2\xB0" "\0\0";
+static const char *glyphs = tg_glyphs;
+static byte nglyphs = NGLYPHS;
 static byte cx, cy;         // the cursor
 static byte wrap;           // the row is full: the next character starts a new one
 static byte rv;             // 0x80 if what follows is in reverse video
@@ -347,7 +351,7 @@ static void out_rv_set(byte r) { out_style(r, 0); }
 
 // A cell's character as the terminal wants it.
 static void out_cell(byte ch) {
-    if (ch && ch <= NGLYPHS) outs(glyphs[ch - 1]);
+    if (ch && ch <= nglyphs) outs(glyphs + (word)(ch - 1) * 4);
     else out((char)ch);
 }
 
@@ -410,7 +414,7 @@ void term_putc(char c) {
         return;
     }
     if (ch > 126) {
-        if (ch >= TG_HLINE && ch < TG_HLINE + NGLYPHS) ch = (byte)(ch - TG_HLINE + 1);
+        if (ch >= TG_HLINE && ch < TG_HLINE + nglyphs) ch = (byte)(ch - TG_HLINE + 1);
         else ch = '?';
     }
     if (wrap) {
@@ -656,6 +660,11 @@ void term_frame(byte on) {
 }
 
 void term_raw(const char *s) { outs(s); }
+
+void term_glyphs(const char *table, byte n) {
+    glyphs = table ? table : tg_glyphs;
+    nglyphs = table ? (n < 31 ? n : 31) : NGLYPHS;
+}
 
 void term_cursor(byte on) { outs(on ? "\033[?25h" : "\033[?25l"); }
 

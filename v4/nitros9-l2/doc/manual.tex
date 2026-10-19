@@ -23,7 +23,7 @@
 
 % The manual's version: change it, and add a line to the revision history
 % on the copyright page, with each revision.
-\newcommand{\docversion}{1.0}
+\newcommand{\docversion}{1.2}
 \newcommand{\docdate}{18 October 2026}
 
 \usepackage[hidelinks,pdftitle={TFR Manual and Reference, Version \docversion},
@@ -204,7 +204,7 @@ Level 2 as they run on the board.
 \begin{tabular}{@{}l l@{}}
 \bfseries Order Number: & TFR-911H-MR\\[3pt]
 \bfseries Version: & \docversion, \docdate\\[3pt]
-\bfseries Revision/Update Information: & Version \docversion: the new name, the cover, and \rp{fnbounce}{1}.\\[3pt]
+\bfseries Revision/Update Information: & Version \docversion: \rp{fnbattleship}{1}, Fuji Battleship.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
 \end{tabular}\par}
@@ -221,6 +221,10 @@ Reference Pages}.\\
 0.4 & 18 Oct 2026 & fujinet-lib for NitrOS-9; colors.\\
 1.0 & 18 Oct 2026 & Named the \emph{TFR Manual and Reference}, and
 versioned; the cover; \cmd{fnbounce}; UTF-8 in the tether.\\
+1.1 & 18 Oct 2026 & \cmd{fnweather} in C, with pictures, the week's
+forecast, and a cache; the first, as \cmd{fnwx}.\\
+1.2 & 18 Oct 2026 & \cmd{fnbattleship}: Fuji Battleship, in color and
+with sound.\\
 \end{tabular}
 
 The information in this document is subject to change without notice and
@@ -288,8 +292,8 @@ TurbOS and NitrOS-9 systems that run on the board, and a first
 session.\\
 Chapter 2 & Describes networking: the FujiNet adapter, how it connects
 to the board, DriveWire, the FujiNet in NitrOS-9, and how to program it,
-with \cmd{fnweather} as the example, and two programs in C brought over
-from the Color Computer.\\
+with \cmd{fnwx}, the first \cmd{fnweather}, as the example, and five
+programs in C brought over from the Color Computer.\\
 Chapter 3 & Contains the reference pages, grouped as ULTRIX grouped
 them: Section 1, Commands; Section 4, Special Files (the hardware);
 Section 6, Games; and Section 8, Maintenance.\\
@@ -512,10 +516,11 @@ a \cmd{man} page on the board too: type \type{man} \var{name}.
 \rp{beep}{1}, \rp{click}{1} & Ring the bell; turn keyclicks on and off\\
 \rp{fujinet}{1} & The FujiNet's hosts, device slots, and status: \cmd{fnstatus}, \cmd{fnlistdevs}, \ldots\\
 \rp{fnconfig}{1} & FujiNet CONFIG\\
-\rp{fnweather}{1} & The weather where you are\\
+\rp{fnweather}{1} & The weather, now and for the week\\
 \rp{fnnews}{1} & The news, from the FujiNet news server\\
 \rp{fnstocks}{1} & Ten stocks, with a ticker\\
 \rp{fnbounce}{1} & Bounce World: shapes that bounce across many computers' screens\\
+\rp{fnbattleship}{1} & Fuji Battleship: sea battle for up to four players\\
 \rp{fujinet}{4} & The FujiNet: its wiring, its disks, and booting from it\\
 \rp{tfr911h}{4} & The hardware the firmware emulates\\
 \rp{sn76489}{4} & Programming the sound chip\\
@@ -583,9 +588,10 @@ This chapter describes how the TFR/911H reaches the network: the FujiNet
 adapter, how it is wired to the board and what the firmware makes of it,
 the DriveWire protocol that runs between them, how NitrOS-9 uses it, and
 how to write programs that use it. It ends with a walk through
-\cmd{fnweather}, a program that finds where you are and shows the weather
-there, and with three programs in C, \cmd{fnnews}, \cmd{fnstocks}, and
-\cmd{fnbounce}, that came from the Color Computer with little change.
+\cmd{fnwx}, the first \cmd{fnweather}, a program in assembly that finds
+where you are and shows the weather there, and with five programs in C,
+\cmd{fnnews}, \cmd{fnstocks}, \cmd{fnbounce}, \cmd{fnweather}, and
+\cmd{fnbattleship}, that came from the Color Computer with little change.
 
 \section{The FujiNet}
 
@@ -608,7 +614,7 @@ programs ask the FujiNet to fetch from the network;
 first disk;
 \item commands to manage it, \rp{fujinet}{1} and \rp{fnconfig}{1}, and
 programs that use it: \rp{fnweather}{1}, \rp{fnnews}{1},
-\rp{fnstocks}{1}, and \rp{fnbounce}{1}.
+\rp{fnstocks}{1}, \rp{fnbounce}{1}, and \rp{fnbattleship}{1}.
 \end{itemize}
 
 \subsection{The hardware}
@@ -1125,11 +1131,13 @@ The Makefile in \file{v4/nitros9-l2} does this for every file in
 puts it on yours). \file{alib} gives you \texttt{PRINTS}, \texttt{PUTS},
 \texttt{DEC\_BIN}, and NitrOS-9's other assembly-language helpers.
 
-\section{An Example: fnweather}
+\section{An Example: fnwx}
 
-\cmd{fnweather} (\file{fujinet/cmds/fnweather.as}, 1{,}213 lines)
-finds where you are from your network's public address, and shows the
-weather there. It uses two free web services, neither of which needs a key:
+\cmd{fnwx} (\file{fujinet/cmds/fnwx.as}, 1{,}213 lines) finds where
+you are from your network's public address, and shows the weather there.
+It was the first \cmd{fnweather}, until that was written again in C, with
+icons and the week's forecast (see Programs in C); it is kept, as
+\cmd{fnwx}, for this walk through. It uses two free web services, neither of which needs a key:
 \texttt{ip-api.com} for the location, and Open-Meteo for the weather.
 
 \subsection{The plan}
@@ -1260,7 +1268,7 @@ WeatherDescription  lbsr      DEC_BIN             the code, as text, into D
 
 \subsection{The screen}
 
-\cmd{fnweather} reads keys one at a time, without echo: it copies its
+\cmd{fnwx} reads keys one at a time, without echo: it copies its
 standard input's path options with \texttt{SS.Opt}, turns off echo, auto
 line feed, and paging (\texttt{PD.EKO}, \texttt{PD.ALF}, \texttt{PD.PAU}),
 and puts them back when it ends. It draws with a handful of
@@ -1280,7 +1288,7 @@ it. Some things to remember:
 \begin{itemize}\setlength{\itemsep}{0pt}
 \item A device spec, with its \texttt{N:} and its URL, is at most 255
 characters. Ask the service for only the fields you need, as
-\cmd{fnweather} does; split the request in two if you must.
+\cmd{fnwx} does; split the request in two if you must.
 \item A query's value is text, as it appears in the JSON. Give
 \texttt{FNNetQuery} a buffer big enough for the longest value, with its
 zero.
@@ -1305,11 +1313,13 @@ against \emph{fujinet-lib}, the FujiNet's C library, which has the same
 calls on every computer. Those for the Color Computer are compiled with
 CMOC, which compiles for OS-9 too. \file{fujinet/fujinet-lib}, in
 \file{v4/nitros9-l2}, is fujinet-lib for NitrOS-9, and \file{fujinet/c}
-is a terminal to draw on. With them, three of the Color Computer's
+is a terminal to draw on. With them, five of the Color Computer's
 programs became NitrOS-9 commands, their logic unchanged:
 \rp{fnnews}{1}, from \texttt{fujinet-news}, \rp{fnstocks}{1}, from
-\texttt{fujinet-stocks}, and \rp{fnbounce}{1}, from
-\texttt{bounce-world-client}.
+\texttt{fujinet-stocks}, \rp{fnbounce}{1}, from
+\texttt{bounce-world-client}, \rp{fnweather}{1}, from
+\texttt{fujinet-weather}, and \rp{fnbattleship}{1}, from
+\texttt{fujinet-battleship}.
 
 \subsection{fujinet-lib for NitrOS-9}
 
@@ -1397,7 +1407,7 @@ console's 6850, at \file{\$FF15}, not through SCF, which takes some 300
 microseconds a character: the firmware's 6850 is always ready for another
 character, and holds the 6309 while its buffer to the tether is full.
 
-\subsection{The three programs}
+\subsection{The five programs}
 
 \cmd{fnnews} is the Color Computer client of \texttt{fujinet-news}. Its
 topics, pages of headlines, and pages of a story are the same state
@@ -1444,6 +1454,48 @@ for each kind of shape, calls to those screens, and the main loop, which
 sends the next request before it draws, so that the FujiNet and the
 server are at work while the 6309 draws.
 
+\cmd{fnweather} is the Color Computer client of \texttt{fujinet-weather}:
+its requests to \texttt{ip-api.com} and Open-Meteo, its descriptions of
+the WMO weather codes and its choice of icon for each, with a screen of
+its own for the terminal (\file{fujinet/weather}). It asks for the
+weather in three requests, not the CoCo's seven, the fewest whose URLs
+fit a device spec of 255 characters, and in metric units, which it
+converts itself, in integers, since CMOC has no floating point under
+OS-9; so \key{U} needs no request. Its icons are pixel art, two pixels to
+a character, drawn with half blocks in the terminal's colors, one as the
+foreground and one as the background where both halves are colored; a
+Python program, \file{icons.py}, makes them from shapes---a sun, clouds of
+overlapping discs, drops, flakes, a bolt---into \file{icondata.h}. What
+it fetched last is kept in \file{/DD/SYS/fnweather.dat}, with the place
+and the units, so that it shows them at once, and fetches again only when
+they are half an hour old.
+
+\cmd{fnbattleship} is \texttt{fujinet-battleship}, Eric Carr's and
+Thomas Cherryhomes' game of sea battle, whose game is the same C on every
+computer, with a directory for each computer's screen, keys, and sound;
+NitrOS-9's, \file{os9}, is beside \file{coco}. The server sends its state
+as a C structure, ready to read into memory, and CMOC lays structures out
+as the server expects, a byte at a time with no padding. On the CoCo the
+boards are bitmaps; here a square is two columns of the terminal, so that
+it is square, the water blue with waves, the ships in grey half blocks,
+hits a fire of shaded blocks in red and yellow, misses a white ring, and
+the cursor a blinking reticle. Two players have their boards side by
+side, with coordinates, and whose turn it is between them; three or four
+have a quarter of the screen each. A coordinate can be typed, a letter
+and a digit, as well as aimed at with the arrows, and the ship being
+placed is marked in the fleet beside the board (\texttt{BUILD\_OS9} in
+\file{gamelogic.c}). One change is for every computer: when a turn's time
+runs out, the program asks the server for the state at once. Upstream's
+waited out the time again, and again, while the server had moved for
+the player. Its sounds, played on the SN76489, are a sonar's
+ping for your turn, a shell's whistle, explosions---noise on the noise
+voice at the pitch of a silent tone voice, swept down---and splashes.
+\file{term.c} keeps 31 graphics characters at most, and lets a program
+have its own (\texttt{term\_glyphs}); \cmd{fnbattleship} has the double
+lines, shades, arrows, and rings it draws with. Its title has a
+battleship of pixel art, made by \file{shipart.py} as \cmd{fnweather}'s
+icons are.
+
 \subsection{Building and testing}
 
 \type{make fujinet-lib} compiles fujinet-lib and puts it in
@@ -1466,11 +1518,25 @@ data area. And \texttt{term\_printf} does its own formatting, because
 CMOC's \texttt{vsprintf} does not work in an OS-9 program (in version
 0.1.97 it writes to standard output, and the stack then overflows);
 \texttt{printf} and \texttt{sprintf} do.
+Two more of CMOC's ways showed on the board, in \cmd{fnweather}. A
+\texttt{const} array of strings, such as \texttt{const char t[10][14][15]},
+is kept in the data area with the variables that have values to start
+with, where a \texttt{const char t[]} is kept in the module; and the
+module's header, which tells OS-9 how much memory the program needs,
+counts the variables that start at zero and the stack, but not those. A
+big table of strings therefore leaves the stack no room, and
+\cmd{fnweather}'s icons are each one long string. And the product of an
+\texttt{unsigned char} and a constant that fits in one is kept to eight
+bits: \texttt{icon * 196} has to be written \texttt{(word) icon * 196}.
 \type{make build/fnnews-host} and \type{make build/fnstocks-host} build
 them for the computer the tether runs on, with
 \file{fujinet/c/host/fujinet-host.c} in place of fujinet-lib: \cmd{curl} fetches, \cmd{python3} answers the
 JSON queries, and app keys are files. The screens are the same, so a
 change can be tried there before it goes to the board.
+\type{make build/fnweather-host} builds \cmd{fnweather}, which keeps its
+cache in \file{fnweather.dat} there, or in \texttt{\$FNWEATHER\_CACHE}.
+\type{make build/fnbattleship-host} builds \cmd{fnbattleship}, which plays
+on the real server.
 \type{make build/fnbounce-host} builds \cmd{fnbounce} the same way, with
 TCP: it is compiled as for CMOC, with stand-ins for CMOC's \file{cmoc.h}
 and \file{coco.h} in \file{fujinet/bounce/host}, so that it takes the
@@ -1499,11 +1565,12 @@ This section describes the commands added to NitrOS-9 Level~2 for the TFR/911H. 
 beep(1) & Ring the bell\\
 clear(1) & Clear the screen\\
 click(1) & Turn keyclicks on or off\\
+fnbattleship(1) & Fuji Battleship, through the FujiNet\\
 fnbounce(1) & Bounce World, through the FujiNet\\
 fnconfig(1) & FujiNet CONFIG: the FujiNet's status, hosts, device slots, and WiFi\\
 fnnews(1) & The news, through the FujiNet\\
 fnstocks(1) & Stock quotes, through the FujiNet\\
-fnweather(1) & The weather where you are, through the FujiNet\\
+fnweather(1) & The weather, now and for the week, through the FujiNet; \textmd{fnwx}\\
 fujinet(1) & Commands for the FujiNet: \textmd{fnstatus, fnlisthosts, fnlistdevs, fnsetdevfile,} \ldots\\
 grep(1) & Print lines that contain a string\\
 info(1) & Show what the system and the hardware know about themselves\\
@@ -1561,6 +1628,64 @@ the same before an OS is booted; see \rp{tcl}{8}.
 \rp{tetris}{6} turns keyclicks off while it runs, and puts them back as
 they were when it ends.
 \rh{See Also} \rp{beep}{1}, \rp{sn76489}{4}, \rp{tfr911h}{4}
+\end{refpage}
+
+\refentry{fnbattleship}{1}{Fuji Battleship}
+\begin{refpage}
+\rh{Name} \cmd{fnbattleship} -- Fuji Battleship, through the FujiNet
+\rh{Syntax} \cmd{fnbattleship}
+\rh{Description}
+The \cmd{fnbattleship} command plays Fuji Battleship, a game of sea
+battle for up to four players, on a server on the Internet, against
+people on other computers or the server's robots. Each player places five
+ships on a board of ten squares by ten; then they take turns, and a shot
+at a square is a shot at that square on every other player's board. The
+last with a ship afloat wins.
+
+\cmd{fnbattleship} starts with its title, which shows its version and the
+day it was built. The first time, it asks for a name, which the FujiNet
+keeps for the games of its lobby, and shows how to play. Then it lists
+the server's tables: some for people, and some with robots
+(\texttt{ai~-~1~on~1}, \texttt{ai~-~2~bots}, \texttt{ai~-~3~bots}). At a table the
+players get ready, and when all are, a countdown starts; then each places
+the ships, and the turns begin. Your board, with your ships, is on the
+left, the others on the right, or each in a quarter of the screen when
+there are three or four. Hits burn, misses splash, and under or beside
+each board is that player's fleet, crossed out as it sinks. Between the
+boards is whose turn it is. The server gives each player a time to move;
+the last twenty seconds count down at the bottom right, and then the
+server moves for you.
+
+\begin{keys}[1.1in]
+\key{Up}, \key{Down} & In the list of tables, choose one;
+\key{Space} joins it. \key{R} lists them again, \key{H} shows how to
+play, \key{N} changes your name, \key{S} turns the sound on or off, and
+\key{Q} quits.\\
+\key{Space} & At a table, get ready, or not.\\
+\key{R} & While placing a ship, turn it; the arrows move it, and
+\key{Space} places it.\\
+\key{A}--\key{J}, \key{1}--\key{0} & On your turn, aim at that column or
+row (\key{0} is row 10); the arrows aim too, and \key{Space} fires.\\
+\key{Esc} & The menu: \key{Q} leaves the table, \key{H} shows how to
+play, \key{S} turns the sound on or off, and \key{Space} goes back.\\
+\end{keys}
+At the end of a game, \key{Space} goes on to the next.
+\rh{Restrictions}
+NitrOS-9 waits while the FujiNet fetches each reply from the server,
+which takes a second or more. The screen must be at least 80 columns by
+24 lines, and show UTF-8. The sounds are played on the SN76489
+(\rp{sn76489}{4}).
+\rh{Files}
+\begin{keys}[1.75in]
+\file{/FujiNet/00010100.key} & On the FujiNet's SD card: your name, for
+the games of the FujiNet's lobby.\\
+\file{/FujiNet/00010105.key} & The server and the table you are at, so
+that \cmd{fnbattleship} goes back to it after a reset; leaving the table
+forgets it.\\
+\file{/FujiNet/e41c0500.key} & Whether the sound is on, and that how to
+play has been shown.\\
+\end{keys}
+\rh{See Also} \rp{fnbounce}{1}, \rp{fujinet}{4}, \rp{sn76489}{4}
 \end{refpage}
 
 \refentry{fnbounce}{1}{Bounce World}
@@ -1737,28 +1862,56 @@ screen must be at least 80 columns by 24 lines.
 
 \refentry{fnweather}{1}{the weather where you are}
 \begin{refpage}
-\rh{Name} \cmd{fnweather} -- the weather where you are, through the FujiNet
-\rh{Syntax} \cmd{fnweather}
+\rh{Name} \cmd{fnweather}, \cmd{fnwx} -- the weather where you are, through the FujiNet
+\rh{Syntax} \cmd{fnweather}\\
+\cmd{fnwx}
 \rh{Description}
-The \cmd{fnweather} command finds where you are from your network's public
-address (from \texttt{ip-api.com}), then shows the weather there now (from
-Open-Meteo): the sky, the temperature and what it feels like, the
-humidity, the air pressure, and the wind. It uses Fahrenheit and miles in
-the United States, Liberia, and Myanmar, and Celsius and kilometres
-elsewhere. The FujiNet makes the HTTPS requests and picks the fields out
-of the JSON replies.
+The \cmd{fnweather} command shows the weather where you are, now and for
+the week. It finds where you are from your network's public address
+(from \texttt{ip-api.com}), or from the name of a city, and fetches the
+weather there from Open-Meteo.
 
-\begin{keys}[0.5in]
-\key{R} & Fetch the weather again.\\
+Its screen shows the sky as a picture---sun or moon, clouds, rain, a
+storm, snow, or fog---beside the temperature, in large figures colored
+from blue for cold to red for hot, the description, what it feels like,
+and today's high and low. To the right are the humidity and the clouds,
+as bars, the dew point, the pressure, the visibility, the wind, today's
+ultraviolet index, colored by the WHO's scale, and the times of sunrise
+and sunset. Below are the next eight days, each with its picture, its
+high and low, and its chance and amount of rain. \key{F} shows the
+forecast in detail, four days to a page.
+
+\cmd{fnweather} keeps what it fetched, with the place and the units, in
+\file{/DD/SYS/fnweather.dat}. It shows that at once, and fetches the
+weather again when it is half an hour old, at the start or while it is
+showing it, which it says on the line above the keys. It uses Fahrenheit,
+miles, and inches in the United States, Liberia, and Myanmar, and
+Celsius and kilometres elsewhere, until \key{U} changes them.
+
+\begin{keys}[1in]
+\key{R} & Fetch the weather now.\\
+\key{F} & The forecast: \key{N} and \key{B}, or the arrows, turn its two
+pages, and \key{W} or \key{Esc} comes back.\\
 \key{U} & Change between metric and imperial units.\\
-\key{L} & Find where you are again.\\
-\key{D} & Show the data as received, and the last error.\\
-\key{I}, \key{?} & Show the credits; show help.\\
-\key{Q} & Quit.\\
+\key{L} & Choose the place: type a city, or press \key{Enter} for where
+you are.\\
+\key{I} & Show where the data comes from, and the credits.\\
+\key{Q}, \key{Esc} & Quit. \key{Ctrl/C} is the same.\\
 \end{keys}
+
+\cmd{fnwx} is the first \cmd{fnweather}, in assembly, kept as the
+example of Chapter~2: the weather now, in words and numbers, with
+\key{R}, \key{U}, \key{L}, \key{D} (the data received), \key{I}, and
+\key{Q}.
 \rh{Restrictions}
-Each request can take several seconds. \cmd{fnweather} shows today's
-conditions, not a forecast.
+Fetching the weather takes some seconds, and NitrOS-9 stops while the
+FujiNet answers each request. The screen must be at least 80 columns by
+24 lines, and show UTF-8.
+\rh{Files}
+\begin{keys}[1.75in]
+\file{/DD/SYS/fnweather.dat} & The cache: the place, the units, and the
+last weather fetched.\\
+\end{keys}
 \rh{See Also} \rp{fnconfig}{1}, \rp{fnnews}{1}, \rp{fnstocks}{1}, \rp{fujinet}{4}
 \end{refpage}
 
@@ -2811,6 +2964,53 @@ and drawing a frame 83; the terminal takes some 4,000 characters a
 second. Drawn as at first, comparing the whole copy of the screen and
 writing through SCF, it showed 2.8 frames a second; it now shows 9.3 of
 the server's 10.
+\end{itemize}
+
+\section{fnweather}
+
+\begin{itemize}\setlength{\itemsep}{0.3ex}
+\item Built for the Unix computer, against Open-Meteo and ip-api.com: the
+weather where the computer is, in both units; the forecast's two pages;
+the information page; a city looked up (London, in the rain); and the
+place, the units, and the weather kept in the cache from one run to the
+next.
+\item On the board, through the FujiNet, the same, with every screen read
+back with a terminal emulator, in color, and compared with the Unix
+build's; the week's chances of rain and UV index were checked against
+what Open-Meteo itself gives. With no cache, finding the place and
+fetching the weather took 17~seconds; fetching again with \key{R}, 18 to
+19 each time; London, looked up by name, 21. Started again with the
+cache, \cmd{fnweather} had the weather on the screen in 2~seconds.
+\item The board is what showed the two ways of CMOC's in Chapter~2's
+\emph{Building and testing}: at first the stack overflowed at once, and
+then the big icons were drawn from the wrong rows.
+\end{itemize}
+
+\section{fnbattleship}
+
+\begin{itemize}\setlength{\itemsep}{0.3ex}
+\item Built for the Unix computer, against the public server: the title,
+a name typed and kept, how to play, the tables, a table's players getting
+ready, placing ships (turned with \key{R}), and turns aimed with the
+arrows and with typed coordinates; a whole game against a robot, to its
+end, the menu, leaving the table, and quitting; and a table of four, a
+quarter of the screen each. A program played the games, reading the
+screen with a terminal emulator: it fired next to its hits, and
+elsewhere on a checkerboard. Every screen was read back in color.
+\item On the board, through the FujiNet, the same whole game, twice: from
+typing \cmd{fnbattleship} to the list of tables in ten seconds, and then
+57 shots, which won, and 49, which lost. From firing to the next turn, the
+robot's shot and both animations between, took 3.1 to 4.8~seconds, 3.2
+or 3.3 most often; the Unix build, which runs \cmd{curl} for each
+request, took twice as long.
+\item A turn left to run out: the last twenty seconds counted down at the
+bottom right, and at 250, the server moved for the player and the game
+went on. Upstream's program had not asked the server again, and waited
+out the turn over and over (see Chapter~2).
+\item The board's screens showed a flaw, which the Unix build's had too: a
+ship standing upright, whose ends were half blocks across, looked a
+square shorter than it was. Its ends are narrower now, but whole
+squares.
 \end{itemize}
 
 \section{The Firmware}

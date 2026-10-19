@@ -105,7 +105,8 @@ Usage : Turn the TFR/911H's keyclicks on or off.
 FujiNet commands on the TFR/911H.  Slots count from 0: device slot 0
 is /X0 (the FujiNet's slot 1).  Host slot 1 is often its SD card.
   fnconfig         FujiNet CONFIG: status, hosts, devices, WiFi
-  fnweather        the weather where you are
+  fnweather        the weather where you are, and the week's
+  fnwx             the first fnweather: the weather now, in words
   fnnews           the news, from the FujiNet news server
   fnstocks         a stock ticker, from Finnhub
   fnbounce         Bounce World, shapes shared with other computers
@@ -129,9 +130,16 @@ Usage : FujiNet CONFIG.  1 Status, 2 Hosts, 3 Devices, 4 WiFi, I info,
         while it is /DD.
 @FNWEATHER
 Syntax: fnweather
-Usage : The weather where you are (by your IP address), from ip-api.com
-        and Open-Meteo.  R refresh, U units, L locate again, I info,
-        ? help, D the data received, Q quit.
+Usage : The weather where you are, now and for the week, from ip-api.com
+        and Open-Meteo, with pictures.  R fetch now, F the forecast (N
+        and B turn its pages, W comes back), U units, L the place (a
+        city, or Enter for where you are), I info, Q or Esc quit.  Kept
+        in /DD/SYS/fnweather.dat; fetched again after half an hour.
+@FNWX
+Syntax: fnwx
+Usage : The first fnweather, in assembly: the weather now, in words.
+        R refresh, U units, L locate again, I info, ? help, D the data
+        received, Q quit.
 @FNNEWS
 Syntax: fnnews
 Usage : The news, from the FujiNet news server.  Up/down choose a topic or
@@ -144,6 +152,14 @@ Usage : Ten stocks, with a ticker, from Finnhub; the FujiNet keeps the
         list.  Arrows or 1-9 and 0 select, E edit, D delete, L look up a
         name, I company information, R refresh, H hide and S show the
         list, Esc quit.  Quotes are fetched again every five minutes.
+@FNBATTLESHIP
+Syntax: fnbattleship
+Usage : Fuji Battleship: sea battle for up to four players, people or
+        the server's robots, through the FujiNet.  Tables: arrows and
+        Space join, R refresh, H how to play, N name, S sound, Q quit.
+        At a table Space is ready; placing ships, arrows move, R turns
+        and Space places; on your turn, arrows or a letter A-J and a
+        digit 1-0 aim and Space fires.  Esc is the menu (Q leaves).
 @FNBOUNCE
 Syntax: fnbounce
 Usage : Bounce World: shapes bouncing across the screens of all the

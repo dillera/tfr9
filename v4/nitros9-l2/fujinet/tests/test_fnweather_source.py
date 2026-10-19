@@ -4,7 +4,7 @@ import unittest
 
 
 ROOT = pathlib.Path(__file__).parents[1]
-APP_PATH = ROOT / "cmds" / "fnweather.as"
+APP_PATH = ROOT / "cmds" / "fnwx.as"
 NET_PATH = ROOT / "lib" / "fnnet.as"
 MAKEFILE_PATH = ROOT.parent / "Makefile"
 

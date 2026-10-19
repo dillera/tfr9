@@ -22,7 +22,8 @@ GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/in
 # The FujiNet commands (see fujinet/README.md), and the FujiNet programs
 # in C, which need CMOC too.
 FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
-FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks build/fn/fnbounce)
+FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks build/fn/fnbounce \
+  build/fn/fnweather build/fn/fnbattleship)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -81,9 +82,9 @@ build/grep: $B/Makefile build/sys.o build/alib.a  # rmake-l2.tcl writes build/lo
 	cd build && $(LWLINK) --format=os9 -o grep grep.o sys.o alib.a  # module name = output name
 
 # The FujiNet commands, each linked with the FujiNet libraries.
-# (No nosymbolcase here: fnweather and fnconfig have labels that differ
+# (No nosymbolcase here: fnwx and fnconfig have labels that differ
 # only in case, as in NitrOS-9's own rules for linked commands.)
-# ANSI=1: fnconfig and fnweather draw with ANSI sequences, for the
+# ANSI=1: fnconfig and fnwx draw with ANSI sequences, for the
 # tether's terminal, instead of CoCo 3 window codes (fujinet/lib/fnansi.as).
 FN_FLAGS = $(subst nosymbolcase$(COMMA),,$(OBJ_FLAGS)) -DANSI=1 \
   -Ifujinet/lib -Ifujinet/defs -I$(NITROS9_DIR)/defs
@@ -150,6 +151,17 @@ build/fn/fnstocks: $(STOCKS_OBJS) $(FN_C_OBJS) $(FNLIB_A)
 	cd build/fn && $(CMOC) --os9 -o fnstocks $(patsubst build/fn/%,%,$(STOCKS_OBJS) $(FN_C_OBJS)) \
 	  -L../fnlib -lfujinet
 
+# fnweather: the weather, after FujiNetWIFI/fujinet-weather's CoCo client
+# (fujinet/cmds/fnwx.as is the first fnweather, in assembly).
+WEATHER = fujinet/weather
+WEATHER_OBJS = $(patsubst $(WEATHER)/%.c,build/fn/weather/%.o,$(wildcard $(WEATHER)/*.c))
+build/fn/weather/%.o: $(WEATHER)/%.c $(wildcard $(WEATHER)/*.h $(FN_C)/*.h)
+	mkdir -p $(dir $@)
+	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
+build/fn/fnweather: $(WEATHER_OBJS) $(FN_C_OBJS) $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o fnweather $(patsubst build/fn/%,%,$(WEATHER_OBJS) $(FN_C_OBJS)) \
+	  -L../fnlib -lfujinet
+
 # fnbounce: markjfisher/bounce-world-client, commit BOUNCE_VERSION, with an
 # os9 platform beside its coco one.
 BOUNCE = fujinet/bounce
@@ -171,6 +183,25 @@ build/fn/fnbounce: $(BOUNCE_OBJS) $(FN_C_OBJS) $(FNLIB_A)
 	cd build/fn && $(CMOC) --os9 -o fnbounce $(patsubst build/fn/%,%,$(BOUNCE_OBJS) $(FN_C_OBJS)) \
 	  -L../fnlib -lfujinet
 
+# fnbattleship: FujiNetWIFI/fujinet-battleship, commit BATTLESHIP_VERSION,
+# with an os9 platform beside its coco one.  src/os9/shipart.h is made by
+# src/os9/shipart.py.
+BATTLESHIP = fujinet/battleship
+BATTLESHIP_VERSION = 87b8cc7
+BATTLESHIP_OBJS = $(patsubst $(BATTLESHIP)/src/%.c,build/fn/battleship/%.o,\
+  $(wildcard $(BATTLESHIP)/src/*.c $(BATTLESHIP)/src/os9/*.c))
+build/fn/battleship/%.o: $(BATTLESHIP)/src/%.c \
+    $(wildcard $(BATTLESHIP)/src/*.h $(BATTLESHIP)/src/*/*.h $(FN_C)/*.h)
+	mkdir -p $(dir $@)
+	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
+BATTLESHIP_VERSION_O = build/fn/battleship/os9/version.o
+$(BATTLESHIP_VERSION_O): $(filter-out $(BATTLESHIP_VERSION_O),$(BATTLESHIP_OBJS)) $(FN_C_OBJS) $(FNLIB_A)
+$(BATTLESHIP_VERSION_O): FN_CFLAGS += '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
+  '-DUPSTREAM_VERSION="$(BATTLESHIP_VERSION)"'
+build/fn/fnbattleship: $(BATTLESHIP_OBJS) $(FN_C_OBJS) $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o fnbattleship \
+	  $(patsubst build/fn/%,%,$(BATTLESHIP_OBJS) $(FN_C_OBJS)) -L../fnlib -lfujinet
+
 # fnnews and fnstocks for this computer, for testing: curl and python3 are
 # the FujiNet (fujinet/c/host/fujinet-host.c, with the few fujinet-lib
 # calls they use).
@@ -178,6 +209,9 @@ FN_HOST = $(FN_C)/host
 build/fnnews-host: $(wildcard $(NEWS)/*.[ch] $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
 	mkdir -p build
 	$(CC) -O2 -I$(FN_C) -I$(FN_HOST) -o $@ $(NEWS)/*.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
+build/fnweather-host: $(wildcard $(WEATHER)/*.[ch] $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
+	mkdir -p build
+	$(CC) -O2 -I$(FN_C) -I$(FN_HOST) -o $@ $(WEATHER)/*.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
 build/fnstocks-host: $(wildcard $(STOCKS)/src/*.c $(STOCKS)/src/os9/*.c \
     $(STOCKS)/include/*.h $(STOCKS)/include/os9/*.h $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
 	mkdir -p build
@@ -199,6 +233,14 @@ build/fnbounce-host: $(wildcard $(BOUNCE)/src/*.c $(BOUNCE)/src/*/*.[ch] \
 	    -c -o build/bounce-host/$$(echo $$f | tr / _).o $$f || exit 1; \
 	done
 	$(CC) -O2 -I$(FN_C) -I$(FN_HOST) -o $@ build/bounce-host/*.o $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
+
+# fnbattleship for this computer, for testing against the server.
+build/fnbattleship-host: $(wildcard $(BATTLESHIP)/src/*.[ch] $(BATTLESHIP)/src/*/*.[ch] \
+    $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
+	mkdir -p build
+	$(CC) -O2 -w -DBUILD_OS9 '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
+	  '-DUPSTREAM_VERSION="$(BATTLESHIP_VERSION)"' -I$(FN_C) -I$(FN_HOST) -o $@ \
+	  $(BATTLESHIP)/src/*.c $(BATTLESHIP)/src/os9/*.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
 
 build/tetris: games/tetris.c
 	mkdir -p build

@@ -80,6 +80,12 @@ void term_frame(byte on);   // on: draw unseen; off: send only what changed
 #define TG_FULL      0x97
 #define TG_QUAD_ULLR 0x98
 #define TG_QUAD_URLL 0x99
+#define TG_DEGREE    0x9A   // °
+// A program's own graphics characters in place of these: n (at most 31)
+// of them, 0x80 to 0x80 + n - 1, as UTF-8 four bytes apart in one string
+// (padded with NULs).  A null table brings back the TG_* ones.
+void term_glyphs(const char *table, byte n);
+
 void term_cursor(byte on);
 void term_bell(void);
 void term_raw(const char *s);   // sent as it is, not kept in the copy

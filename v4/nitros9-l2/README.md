@@ -158,7 +158,8 @@ With a FujiNet on GPIO 12/13, NitrOS-9 has four DriveWire disks
 `/N1`-`/N5`, and the commands that manage the FujiNet: `fnstatus`,
 `fnlisthosts`, `fngethost`, `fnsethost`, `fnmount`, `fnlistdevs`,
 `fngetdevfile`, `fnsetdevfile`, `fnmountimg`, `fnconfig` (FujiNet CONFIG),
-and the programs `fnweather`, `fnnews`, `fnstocks` and `fnbounce`.  It can boot from
+and the programs `fnweather`, `fnnews`, `fnstocks`, `fnbounce` and
+`fnbattleship` (and `fnwx`, the first `fnweather`).  It can boot from
 the FujiNet too: `l2fn` at `TCL>`, or
 
 ```
@@ -209,8 +210,9 @@ from a NitrOS-9 source tree.  It produces:
 `modules/` holds TFR/911H-specific modules, which take precedence over
 NitrOS-9's, as do the FujiNet's modules and definitions in `fujinet/`.
 The FujiNet commands are built from `fujinet/cmds/`, and `fnnews`,
-`fnstocks` and `fnbounce` from the C in `fujinet/news/`,
-`fujinet/stocks/` and `fujinet/bounce/`, with the
+`fnstocks`, `fnbounce`, `fnweather` and `fnbattleship` from the C in
+`fujinet/news/`, `fujinet/stocks/`, `fujinet/bounce/`, `fujinet/weather/`
+and `fujinet/battleship/`, with the
 terminal in `fujinet/c/` and fujinet-lib for NitrOS-9 in
 `fujinet/fujinet-lib/` (`make fujinet-lib`).  The modules in `OS9Boot` and the commands on the disk are
 listed at the end of `rmake-l2.tcl`.

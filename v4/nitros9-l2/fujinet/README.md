@@ -152,22 +152,24 @@ makes the FujiNet open the new one.
 | `fnsetdevfile <device_slot> <host_slot> <mode> <path>` | Put an image in a device slot; mode 1 is read-only, 2 read/write |
 | `fnmountimg <device_slot> [<mode>]` | Mount a device slot's image |
 | `fnconfig` | FujiNet CONFIG: status, hosts, device slots (with a directory browser), WiFi |
-| `fnweather` | The weather where you are, from ip-api.com and Open-Meteo |
+| `fnweather` | The weather where you are, now and for the week, with pictures (FujiNetWIFI/fujinet-weather) |
+| `fnwx` | The first `fnweather`, in assembly: the weather now, in words |
 | `fnnews` | The news, from the FujiNet news server (FujiNetWIFI/fujinet-news) |
 | `fnstocks` | Ten stocks and a ticker, from Finnhub (FujiNetWIFI/fujinet-stocks) |
 | `fnbounce` | Bounce World: shapes bouncing across many computers' screens (markjfisher/bounce-world-client) |
+| `fnbattleship` | Fuji Battleship: sea battle for up to four players, in color and with sound (FujiNetWIFI/fujinet-battleship) |
 
 Slots are numbered from 0 here (device slot 0 is `/X0`), as the FujiNet
 numbers them on the wire.
 
-`fnconfig` and `fnweather` were written for a CoCo 3 window.  Built here
+`fnconfig` and `fnwx` were written for a CoCo 3 window.  Built here
 with `ANSI=1` (`lib/fnansi.as`), they draw with ANSI escape sequences for
 the tether's terminal, which should be at least 80 by 24.
 
 ## Programs in C
 
-`fnnews`, `fnstocks` and `fnbounce` are the CoCo versions of three
-FujiNet programs, written in C against fujinet-lib, the FujiNet's C
+`fnnews`, `fnstocks`, `fnbounce`, `fnweather` and `fnbattleship` are the
+CoCo versions of five FujiNet programs, written in C against fujinet-lib, the FujiNet's C
 library, and compiled with CMOC, which can compile for OS-9.
 
 * `fujinet-lib/` is fujinet-lib for NitrOS-9: FujiNetWIFI/fujinet-lib
@@ -213,9 +215,33 @@ has an `init_appkey()` of its own and makes `fn_network_bw` and its kin
 macros.
 Give it the server's framed TCP port, 9003 (`bouncy.diller.org:9003`);
 9002 is for clients older than 2.3.
+`weather/` is fnweather, after
+[fujinet-weather](https://github.com/FujiNetWIFI/fujinet-weather)'s CoCo
+client (commit f6e8fd4): its requests to ip-api.com and Open-Meteo, its
+weather codes and icons, with a screen of its own for the terminal.  It
+asks in three requests, not seven (the fewest whose URLs fit the 255
+characters of a device spec), in metric, converting in integers, so `U`
+needs no request.  The icons are half-block pixel art in the terminal's
+colors, made from shapes by `weather/icons.py` into `icondata.h`.  The
+last weather, the place and the units are kept in `/DD/SYS/fnweather.dat`
+and shown at once; it fetches again when they are half an hour old.
+`battleship/` is fnbattleship,
+[fujinet-battleship](https://github.com/FujiNetWIFI/fujinet-battleship)
+(commit 87b8cc7) with a directory for NitrOS-9, `src/os9`, beside
+`src/coco`: the screens for an 80 by 24 terminal (a square is two
+columns; two players side by side with coordinates, three or four in
+quarters), sounds on the SN76489, and a title with a battleship made by
+`src/os9/shipart.py`.  Of the game's own files, a few lines changed
+(`BUILD_OS9`): a coordinate can be typed (a letter and a digit), the ship
+being placed is marked in the fleet, the logo is NitrOS-9's, and how to
+play lists the keys.  One fix is for every computer: when a turn's time
+runs out, the client asks the server at once (upstream waited out the
+time again, over and over, while the server had moved for it).  It brings its own
+graphics characters to `c/term.c` (`term_glyphs()`).
 
 For trying a change without the board, `make build/fnnews-host`,
-`make build/fnstocks-host` and `make build/fnbounce-host` build them for
+`make build/fnstocks-host`, `make build/fnweather-host`,
+`make build/fnbattleship-host` and `make build/fnbounce-host` build them for
 this computer, with `c/host/fujinet-host.c` (curl, python3, and a socket
 for TCP) as the FujiNet; `fnbounce` is compiled as for CMOC, with
 `bounce/host/`'s stand-ins for CMOC's headers.  App keys are files in

@@ -1,5 +1,5 @@
 ********************************************************************
-* fnweather - FujiNet-powered weather TUI for NitrOS-9
+* fnwx - the first fnweather: FujiNet-powered weather TUI for NitrOS-9
 *
 * Uses FujiNet HTTP and JSON services to locate the user by public IP,
 * then obtains current Open-Meteo conditions for the local area.
