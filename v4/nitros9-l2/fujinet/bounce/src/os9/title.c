@@ -1,3 +1,4 @@
+// @license gpl v. 3, see fujinet/LICENSE for details.
 #include "conio_wrapper.h"
 #include "appkey.h"
 #include "data.h"

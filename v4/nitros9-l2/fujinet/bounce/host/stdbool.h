@@ -1,6 +1,8 @@
 // stdbool.h -- for building fnbounce on Unix, for testing: bool as CMOC
 // has it, a byte, since the client declares some flags as bool and
 // defines them as uint8_t.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef BWC_HOST_STDBOOL_H
 #define BWC_HOST_STDBOOL_H

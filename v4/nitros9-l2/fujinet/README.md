@@ -269,3 +269,24 @@ for TCP) as the FujiNet; `fnbounce` is compiled as for CMOC, with
 `../rmake-l2.tcl` lists the modules (`FUJINET_MODS`), and `../Makefile`
 builds the commands and the programs in C.  `tests/` has the source checks from dillera/nitros9:
 `python3 -m unittest discover -s tests`.
+
+## License
+
+What is here for the FujiNet is under the GNU General Public License,
+version 3, as the FujiNet project's programs are: see `LICENSE`.  That is
+fujinet-lib (which has its own copy of the license), the terminal and the
+host stand-in in `c/`, the commands in `cmds/` and their libraries
+`lib/fnnet.as` and `lib/fnansi.as`, the tests, fnweather, and what was
+written for NitrOS-9 in the other programs (their `os9` directories and
+`host` stand-ins).  The files written here say so at the top.
+
+Some files came from elsewhere and keep their own terms:
+
+* NitrOS-9's: `modules/dwio.asm`, `modules/scdwv.asm`, `lib/fuji.as`,
+  `lib/sys6809l2.as`, `defs/drivewire.d`, `cmds/fngetdevfile.as` and
+  `cmds/fnsetdevfile.as`.
+* The programs' own files, from fujinet-news and fujinet-battleship, whose
+  sources say GPL v3, and from fujinet-stocks and
+  markjfisher/bounce-world-client, which state no license; those remain
+  their authors'.
+

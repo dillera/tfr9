@@ -2,6 +2,8 @@
 // testing them on Unix: HTTP with curl, JSON queries with python3, TCP
 // (tcp://host:port) with a socket, and app keys in files named
 // appkey-CCCC-AA-KK in $FN_APPKEYS (default: the current directory).
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #include "fujinet-fuji.h"
 #include "fujinet-network.h"

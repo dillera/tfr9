@@ -15,6 +15,8 @@
 // the arrow keys and Page Up/Down as 128..133, which the TFR/911H firmware
 // gives a program as they are while bit 7 of $FF42 is set; ^C and ^E
 // arrive as signals.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #include "term.h"
 

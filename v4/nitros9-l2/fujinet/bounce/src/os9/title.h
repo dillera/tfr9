@@ -1,3 +1,4 @@
+// @license gpl v. 3, see fujinet/LICENSE for details.
 #ifndef OS9_TITLE_H
 #define OS9_TITLE_H
 

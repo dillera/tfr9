@@ -5,6 +5,8 @@
 * then obtains current Open-Meteo conditions for the local area.
 * Inspired by FujiNetWIFI/fujinet-weather.
 *
+* @license gpl v. 3, see fujinet/LICENSE for details.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

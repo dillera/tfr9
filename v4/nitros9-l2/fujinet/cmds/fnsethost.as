@@ -1,6 +1,8 @@
 ********************************************************************
 * fnsethost - set the hostname of a FujiNet host slot
 *
+* @license gpl v. 3, see fujinet/LICENSE for details.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

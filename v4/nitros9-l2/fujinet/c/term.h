@@ -2,6 +2,8 @@
 // (ANSI, at least 80 by 24), keys read raw, and a copy of the screen, so
 // that a row can be shown inverted and back again, as the CoCo programs
 // these come from do by flipping the attributes in screen memory.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef TERM_H
 #define TERM_H

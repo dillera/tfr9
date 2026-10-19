@@ -5,6 +5,8 @@
 * applications.  Requests use OP_FUJINET through scdwv's atomic
 * SS.Fuji transfer so the UART poller cannot consume raw replies.
 *
+* @license gpl v. 3, see fujinet/LICENSE for details.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

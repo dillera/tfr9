@@ -5,6 +5,8 @@
 * DriveWire disk slots, and WiFi setup.  The display uses only SCF
 * terminal control sequences; FujiNet I/O stays behind lib/fuji.as.
 *
+* @license gpl v. 3, see fujinet/LICENSE for details.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,5 +1,7 @@
 // fujinet-int.h -- for building fnbounce on Unix, for testing: what
 // fujinet-lib's gives a CMOC program.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef FUJINET_INT_H
 #define FUJINET_INT_H

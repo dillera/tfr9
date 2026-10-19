@@ -1,6 +1,8 @@
 ********************************************************************
 * fnlistdevs - list the FujiNet device (disk) slots
 *
+* @license gpl v. 3, see fujinet/LICENSE for details.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

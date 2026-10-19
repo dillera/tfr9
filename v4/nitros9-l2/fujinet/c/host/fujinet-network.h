@@ -1,6 +1,8 @@
 // fujinet-network.h -- the network calls of fujinet-lib
 // (FujiNetWIFI/fujinet-lib) that the FujiNet C programs use, for testing
 // them on Unix: see fujinet-host.c.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef FUJINET_NETWORK_H
 #define FUJINET_NETWORK_H

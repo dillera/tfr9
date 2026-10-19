@@ -1,4 +1,6 @@
 // coco.h -- for building fnbounce on Unix, for testing: CMOC's types.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef BWC_HOST_COCO_H
 #define BWC_HOST_COCO_H

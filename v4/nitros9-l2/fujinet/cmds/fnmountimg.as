@@ -4,6 +4,8 @@
 * Use fnsetdevfile to point the device slot at an image on a host,
 * then this command to mount it.
 *
+* @license gpl v. 3, see fujinet/LICENSE for details.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

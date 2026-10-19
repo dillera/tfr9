@@ -1,6 +1,8 @@
 // cmoc.h -- for building fnbounce on Unix, for testing: the CMOC library
 // calls the client uses.  It is compiled as for CMOC (_CMOC_VERSION_),
 // so that it takes the same paths as on the TFR/911H.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef BWC_HOST_CMOC_H
 #define BWC_HOST_CMOC_H

@@ -11,6 +11,8 @@
 * The including file supplies WriteOut (X = bytes, Y = count, to
 * stdout) and posbuf (at least 9 bytes).
 *
+* @license gpl v. 3, see fujinet/LICENSE for details.
+*
 * Edt/Rev  YYYY/MM/DD  Modified by
 * Comment
 * ------------------------------------------------------------------

@@ -1,6 +1,8 @@
 // fujinet-fuji.h -- the FujiNet device calls of fujinet-lib
 // (FujiNetWIFI/fujinet-lib) that the FujiNet C programs use, for testing
 // them on Unix: see fujinet-host.c.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef FUJINET_FUJI_H
 #define FUJINET_FUJI_H

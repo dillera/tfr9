@@ -1,3 +1,4 @@
+// @license gpl v. 3, see fujinet/LICENSE for details.
 #include <cmoc.h>
 #include <coco.h>
 

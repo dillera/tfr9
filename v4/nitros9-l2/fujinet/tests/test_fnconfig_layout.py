@@ -1,3 +1,4 @@
+# @license gpl v. 3, see fujinet/LICENSE for details.
 import pathlib
 import re
 import unittest

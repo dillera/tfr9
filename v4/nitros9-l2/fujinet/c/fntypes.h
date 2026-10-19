@@ -1,5 +1,7 @@
 // fntypes.h -- the basic types of the FujiNet C programs: fujinet-lib's,
 // for CMOC on NitrOS-9, and the same for testing on Unix.
+//
+// @license gpl v. 3, see fujinet/LICENSE for details.
 
 #ifndef FNTYPES_H
 #define FNTYPES_H
