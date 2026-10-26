@@ -50,7 +50,9 @@ inline void CobsEncodeAndTransmit(const unsigned char* data, size_t len, Func pu
       putc_func(payload[ptr + i - 1]);
     }
     ptr += dist - 1;
-    if (ptr < payload_len && payload[ptr] == 0) {
+    // A full block (code 255) has no zero after it: a zero next starts
+    // the next block, as code 1.
+    if (dist < 255 && ptr < payload_len && payload[ptr] == 0) {
       ptr++;
       if (ptr == payload_len) {
         putc_func(1);

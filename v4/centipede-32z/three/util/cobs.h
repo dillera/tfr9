@@ -152,7 +152,9 @@ inline void CobsEncodeAndTransmit(const unsigned char* data, size_t len, Func pu
       putc_func(get_byte(ptr + i - 1));
     }
     ptr += dist - 1;
-    if (ptr < payload_len && get_byte(ptr) == 0) {
+    // A full block (code 255) has no zero after it: a zero next starts
+    // the next block, as code 1.
+    if (dist < 255 && ptr < payload_len && get_byte(ptr) == 0) {
       ptr++;
       // If that zero was the last byte, emit an empty block (code=1)
       // so the decoder appends the implicit zero for it.
