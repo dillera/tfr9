@@ -23,8 +23,8 @@
 
 % The manual's version: change it, and add a line to the revision history
 % on the copyright page, with each revision.
-\newcommand{\docversion}{1.3}
-\newcommand{\docdate}{20 October 2026}
+\newcommand{\docversion}{1.4}
+\newcommand{\docdate}{25 October 2026}
 
 \usepackage[hidelinks,pdftitle={TFR Manual and Reference, Version \docversion},
             pdfauthor={The TFR/9 Project}]{hyperref}
@@ -204,7 +204,7 @@ Level 2 as they run on the board.
 \begin{tabular}{@{}l l@{}}
 \bfseries Order Number: & TFR-911H-MR\\[3pt]
 \bfseries Version: & \docversion, \docdate\\[3pt]
-\bfseries Revision/Update Information: & Version \docversion: release jamesBrown1, and its \emph{Installation Guide}.\\[3pt]
+\bfseries Revision/Update Information: & Version \docversion: \cmd{tsh}, the shell with line editing.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
 \end{tabular}\par}
@@ -228,6 +228,9 @@ with sound.\\
 1.3 & 20 Oct 2026 & Release jamesBrown1, and the \emph{TFR Installation
 Guide}; both of the FujiNet firmware's fixes are in fujinet-firmware
 itself.\\
+1.4 & 25 Oct 2026 & \cmd{tsh}, the shell with line editing, history,
+completion, and a search path; the firmware no longer loses a byte of a
+packet with 254 bytes that are not zero before a zero.\\
 \end{tabular}
 
 The information in this document is subject to change without notice and
@@ -513,6 +516,8 @@ a \cmd{man} page on the board too: type \type{man} \var{name}.
 \toprule
 \textbf{Reference page} & \textbf{Summary}\\
 \midrule
+\rp{tsh}{1} & The shell you type to: line editing, history, completion,
+and a search path\\
 \rp{unix}{1} & \cmd{ls}, \cmd{cd}, \cmd{cat}, \cmd{cp}, \cmd{mv}, \cmd{rm},
 \cmd{ps}, \cmd{df}, and other Unix names for OS-9 commands\\
 \rp{vi}{1} & A small vi, also called \cmd{vim}\\
@@ -569,6 +574,10 @@ Play something:
 OS9:\textbf{zm zork1}
 OS9:\textbf{tetris}
 \end{ex}
+The shell is \cmd{tsh}: the arrow keys move about in the line you are
+typing and bring back the lines you typed before, and \key{Tab} finishes
+the name of a command or a file. \rp{tsh}{1} has the rest.
+
 \key{Ctrl/C} interrupts the program that is running, as on Unix. To leave
 the tether, press \key{Ctrl/]}; NitrOS-9 keeps running on the board, and
 \file{run-l2.sh} will reconnect to it.
@@ -1584,6 +1593,7 @@ fujinet(1) & Commands for the FujiNet: \textmd{fnstatus, fnlisthosts, fnlistdevs
 grep(1) & Print lines that contain a string\\
 info(1) & Show what the system and the hardware know about themselves\\
 pwd(1) & Print the data or execution directory\\
+tsh(1) & The shell: line editing, history, completion, and a search path\\
 unix(1) & Unix-style names for OS-9 commands: \textmd{ls, cd, cat, cp, mv, rm, ps, df,} \ldots\\
 vi(1) & A small vi, also called \textmd{vim}\\
 \bottomrule
@@ -2124,6 +2134,183 @@ OS9:\textbf{pxd}
 \rh{See Also} \rp{unix}{1}
 \end{refpage}
 
+\refentry{tsh}{1}{the shell, with line editing}
+\begin{refpage}
+\rh{Name} \cmd{tsh} -- the shell, with line editing, history, completion,
+and a search path
+\rh{Syntax} \cmd{tsh} [\var{file}]
+\rh{Description}
+\cmd{tsh} is the shell you type to after booting: the last line of
+\file{startup} starts it. It reads each line itself, so that you can move
+about in the line and change it, call back the lines you typed before,
+and have names finished with \key{Tab}. Then it hands the line to the
+OS-9 Shell to run. So commands are written as for the Shell: \texttt{!}
+for a pipe, \texttt{<}, \texttt{>}, \texttt{>>} and the rest for
+redirection, \texttt{\#}\var{n}\texttt{K} for memory, \texttt{\&} and
+\texttt{;}, parentheses, and procedure files all work as they always
+have.
+
+A command that is neither in memory nor in the execution directory is
+looked for in each directory of the \emph{path} in turn; see \cmd{path}
+below. \file{/DD/SYS/tshrc} sets it when \cmd{tsh} starts.
+
+\type{exit} leaves \cmd{tsh}. After booting, that gives the OS-9 Shell;
+type \type{tsh} to come back. Given a \var{file}, \cmd{tsh} runs the
+commands in it and exits; and if its standard input is not a terminal,
+it runs the commands it reads there.
+
+\sans{\textbf{Editing}}
+\begin{keys}[1.5in]
+\key{Left} \key{Right}, \texttt{\^{}B} \texttt{\^{}F} & Move a character.\\
+\texttt{\^{}A} \texttt{\^{}E} & To the start or the end of the line.\\
+\key{Esc} \texttt{b}, \key{Esc} \texttt{f} & Back or on a word.\\
+\key{Backspace} & Delete the character before the cursor.\\
+\texttt{\^{}D} & Delete the character under the cursor.\\
+\texttt{\^{}W} & Delete back to a space: the word before the cursor.\\
+\key{Esc} \key{Backspace}, \key{Esc} \texttt{d} & Delete a word back, or
+on.\\
+\texttt{\^{}K} \texttt{\^{}U} & Delete to the end of the line, or to its
+start.\\
+\texttt{\^{}X} & Delete the whole line.\\
+\texttt{\^{}Y} & Put back what was deleted last.\\
+\texttt{\^{}T} & Swap the two characters before the cursor.\\
+\texttt{\^{}L} & Clear the screen and draw the line again.\\
+\texttt{\^{}C} & Give up the line.\\
+\key{Return} & Run it, wherever the cursor is.\\
+\end{keys}
+A line longer than the screen scrolls sideways; a \texttt{<} at its left
+or a \texttt{>} at its right shows that there is more.
+
+\sans{\textbf{History}}
+\begin{keys}[1.5in]
+\key{Up} \key{Down}, \texttt{\^{}P} \texttt{\^{}N} & The line before, or
+after.\\
+\key{Shift/Up} \key{Shift/Down} & The line before, or after, that starts
+as this one does, up to the cursor: type \type{cop} and press
+\key{Shift/Up} for the last \cmd{copy}.\\
+\texttt{\^{}R} & Search back: type some of the line you want, and
+\texttt{\^{}R} again for an older one. \key{Return} runs it; any other key
+leaves it to be edited; \texttt{\^{}C} gives up.\\
+\end{keys}
+The last 100 lines are kept in \file{/DD/SYS/tsh\_history}, so they are
+there after booting again. \cmd{tsh} adds them to the file ten at a time,
+and when it exits; quitting the tether loses none, since \cmd{tsh} goes on
+running on the board, but pressing \key{RESET} loses those not yet
+written.
+
+\sans{\textbf{Completion}}
+\key{Tab} finishes the word before the cursor. At the start of a command
+it is a command's name: built in, an alias, or a file in the execution
+directory or a directory of the path. Anywhere else it is a file's name,
+in the data directory or in the directory the word gives. A directory is
+followed by \texttt{/}, anything else by a space. When several names
+fit, \key{Tab} adds what they begin with in common, and a second
+\key{Tab} lists them.
+
+\sans{\textbf{Built-in commands}}
+\begin{keys}[1.5in]
+\cmd{cd} [\var{dir} \(|\) \texttt{-}], \cmd{chd} & Change the data
+directory: to \file{/DD} without one, back to the last with \texttt{-}.\\
+\cmd{chx} \var{dir} & Change the execution directory.\\
+\cmd{path} [\var{dir} \ldots] & Show the path, or set it.
+\texttt{+}\var{dir} adds a directory at the end, \texttt{-}\var{dir} takes
+one out, \texttt{-} empties it. A relative \var{dir} is made full from the
+data directory.\\
+\texttt{PATH=}\var{dir}\texttt{:}\var{dir} & Set the path (spaces
+separate them too).\\
+\texttt{PROMPT=}\var{text} & Set the prompt (\texttt{OS9:} to begin
+with): \texttt{\%d} is the data directory, \texttt{\%w} the last name in
+it, \texttt{\%h} the number the next line will have in the history,
+\texttt{\%e} the last command's exit status, \texttt{\%t} the time.\\
+\texttt{COLS=}\var{n} & The screen's width (80).\\
+\cmd{set} & Show \texttt{PATH}, \texttt{PROMPT}, and \texttt{COLS}.\\
+\cmd{history} [\var{n} \(|\) \texttt{-c}] & List the history, or the
+last \var{n} lines of it; \texttt{-c} forgets it all.\\
+\cmd{alias} [\var{name} [\var{text}]] & Make \var{name}, as the first word
+of a command, stand for \var{text}. With only a name, show it; with
+nothing, list them all. \cmd{unalias} \var{name} removes one.\\
+\cmd{source} \var{file}, \cmd{.} & Run the commands in \var{file} in this
+\cmd{tsh}.\\
+\cmd{which} \var{name} \ldots & Say what each name is: an alias, built in,
+in memory, in the execution directory, or where on the path.\\
+\cmd{w}, \cmd{wait} & Wait for the commands in the background to
+finish.\\
+\cmd{kill}, \cmd{setpr} & As in the Shell.\\
+\cmd{x} \cmd{-x}, \cmd{p} \cmd{-p}, \cmd{t} \cmd{-t} & As in the Shell:
+stop at an error, show no prompt, echo each line; or not.\\
+\cmd{ex} \var{command} & Run \var{command}, then leave \cmd{tsh}.\\
+\cmd{exit} [\var{status}] & Leave \cmd{tsh}.\\
+\texttt{*} & A comment, to the end of the line.\\
+\end{keys}
+
+\sans{\textbf{How it runs a command}} For each command between
+\texttt{;} and \texttt{\&}, \cmd{tsh} puts an alias's text in place of
+its name, does a built-in command itself, and starts \texttt{Shell}
+\var{command} for any other, waiting for it unless \texttt{\&} followed.
+The Shell's own built-in commands are done by \cmd{tsh}, because a Shell
+given only \type{chd /dd} would change its own directory, not
+\cmd{tsh}'s, and then wait for more input. A command name found on the
+path is loaded by \cmd{tsh} with \texttt{F\$Load}, so the Shell finds it
+in memory, and unlinked when the command has finished. A procedure file
+on the path is given to the Shell as a full pathlist.
+
+\cmd{tsh} reads keys through a path of its own to the terminal, with echo,
+paging, and the keyboard's signals turned off for that path alone, so the
+Shell and other programs see the terminal as they always have. On the
+TFR/911H's console it sets bit~7 of \file{\$FF42} while you edit a line,
+for the arrow keys (see \rp{tfr911h}{4}), and clears it before running the
+line. It draws with backspaces, carriage returns, and printing
+characters, so any terminal will do; \texttt{\^{}L} alone sends ANSI
+sequences.
+
+\key{Ctrl/C} and \key{Ctrl/E} reach a running command as they always
+have. If the command has not used the terminal since \cmd{tsh} did, they
+come to \cmd{tsh} instead, and it aborts the command with \texttt{S\$Abort},
+through its Shell.
+\rh{Restrictions}
+The tether passes on the arrow keys, and Shift with the up and down
+arrows, but not \key{Home}, \key{End}, or \key{Delete}: use
+\texttt{\^{}A}, \texttt{\^{}E}, and \texttt{\^{}D}. Over a network, from a
+terminal that sends them as ANSI sequences, those keys work too.
+
+There are no variables but \texttt{PATH}, \texttt{PROMPT}, and
+\texttt{COLS}, and no wildcards: the Shell has none either. A line is at
+most 250 characters. Each command costs a process for its Shell, about
+8K of memory while it runs. The Shell's \texttt{i=} is not taken.
+\rh{Examples}
+Find out where commands come from, and add a directory to the path:
+\begin{ex}
+OS9:\textbf{which dir ll fnweather}
+dir: in the execution directory
+ll: in the execution directory
+fnweather: in the execution directory
+OS9:\textbf{path +/H0/BIN}
+OS9:\textbf{path}
+/DD/CMDS /H0/CMDS /H0/BIN
+\end{ex}
+An alias, and a prompt that shows the directory:
+\begin{ex}
+OS9:\textbf{alias lsl dir -e}
+OS9:\textbf{lsl ! more}
+OS9:\textbf{PROMPT="\%d: "}
+/DD: \textbf{cd cmds}
+/DD/CMDS:
+\end{ex}
+
+\rh{Files}
+\begin{keys}[1.75in]
+\file{/DD/SYS/tshrc} & Commands run when \cmd{tsh} starts: the path, the
+prompt, aliases.\\
+\file{/DD/SYS/tsh\_history} & The history.\\
+\file{/DD/startup} & Ends with \type{tsh </term}, to start it after
+booting.\\
+\file{nitros9-l2/tsh/tsh.c} & The source. \type{make build/tsh-host}
+builds it for the computer the tether runs on, where commands go to
+\file{/bin/sh}, for testing.\\
+\end{keys}
+\rh{See Also} \rp{unix}{1}, \rp{tfr911h}{4}, \rp{nitros9-l2}{8}
+\end{refpage}
+
 \refentry{unix}{1}{Unix-style names for OS-9 commands}
 \begin{refpage}
 \rh{Name} \cmd{unix} -- Unix-style names for OS-9 commands
@@ -2131,8 +2318,8 @@ OS9:\textbf{pxd}
 \rh{Description}
 The TFR/911H's NitrOS-9 knows the names a Unix user reaches for first. Most
 are \emph{aliases}: tiny modules that run the OS-9 command that does the
-job, passing along their arguments. Two are built into the Shell, and the
-rest are real commands. \type{man unix} on the board lists them.
+job, passing along their arguments. Two are built into the Shell and
+\cmd{tsh}, and the rest are real commands. \type{man unix} on the board lists them.
 
 \begin{tabularx}{\linewidth}{@{}l l X@{}}
 \toprule
@@ -2154,7 +2341,7 @@ rest are real commands. \type{man unix} on the board lists them.
 \cmd{vim} & \cmd{vi} & The editor; see \rp{vi}{1}\\
 \midrule
 \cmd{cd} & built in & Change the data directory (the same as \cmd{chd})\\
-\cmd{exit} & built in & Leave this Shell\\
+\cmd{exit} & built in & Leave this shell\\
 \midrule
 \cmd{pwd}, \cmd{pxd} & \cmd{pd} & See \rp{pwd}{1}\\
 \cmd{grep}, \cmd{clear} & & See \rp{grep}{1}, \rp{clear}{1}\\
@@ -2188,7 +2375,7 @@ OS9:\textbf{ps}
 \file{nitros9-l2/unix.tcl} & The list of aliases. Add a line to it and
 rebuild to make another; see \rp{nitros9-l2}{8}.\\
 \end{keys}
-\rh{See Also} \rp{grep}{1}, \rp{pwd}{1}, \rp{vi}{1}
+\rh{See Also} \rp{grep}{1}, \rp{pwd}{1}, \rp{tsh}{1}, \rp{vi}{1}
 \end{refpage}
 
 \refentry{vi}{1}{a small vi}
@@ -2725,7 +2912,7 @@ track, \file{../tfr911h/nitros9\_l2\_rom.h}.\\
 \file{level2-fn.dsk}), with the \file{OS9Boot} that boots from the
 FujiNet; see \rp{fujinet}{4}.\\
 \texttt{make build/zm-host} & Build \cmd{zm} for this computer, for
-testing; also \texttt{build/vi-host}.\\
+testing; also \texttt{build/vi-host} and \texttt{build/tsh-host}.\\
 \texttt{make clean} & Remove the build.\\
 \end{keys}
 
@@ -2749,6 +2936,9 @@ $ \textbf{make stories STORIES="~/if/zork1.z3 ~/if/hhgg.z3" DISK=level2.dsk}
 \file{modules/} & The TFR/911H's own modules: the clock, \cmd{clear}, \cmd{beep}, \cmd{click}.\\
 \file{fujinet/} & The DriveWire modules and the \cmd{fn} commands.\\
 \file{games/} & The C programs: \cmd{tetris}, \cmd{zm}, \cmd{vi}, \cmd{info}.\\
+\file{tsh/} & \cmd{tsh}, and its \file{tshrc}.\\
+\file{startup} & The \file{startup} of a new disk; it starts \cmd{tsh}.
+\texttt{make install} leaves a disk's own \file{startup} alone.\\
 \file{helpmsg.unix} & The \cmd{man} pages for what was added.\\
 \file{doc/manual.tex} & This manual.\\
 \end{keys}
@@ -2924,6 +3114,36 @@ what \cmd{vi} shows is what is in the file, after scrolling, sideways
 scrolling, and edits.
 \item On the board: moving and typing answer in under 0.05 seconds,
 scrolling in 0.15, and replacing 178 strings on 116 lines in 1.8.
+\end{itemize}
+
+\section{tsh}
+
+\begin{itemize}\setlength{\itemsep}{0.3ex}
+\item Built for the Unix computer, \cmd{tsh} was driven through a
+pseudo-terminal and the screen read back with a terminal emulator: 68
+checks of the editing keys, the history keys and the history file,
+completion of commands and files, sideways scrolling at 80 and 120
+columns, the path, \cmd{cd} and the prompt, aliases, \texttt{;},
+\texttt{\&} and \cmd{w}, an rc file, and commands from a pipe.
+\item On the board, booted from a copy of the tether's disk with a
+directory on the path, 44 checks the same way: among them a module on
+the path that runs under its own name and is unlinked afterwards, a
+procedure file on the path, \key{Ctrl/C} stopping a command that never
+uses the terminal, \cmd{mfree} the same after running commands, and the
+history kept across leaving and starting \cmd{tsh}. Booted from the
+FujiNet, a shorter run. A command takes half a second from \key{Return}
+to the next prompt, completing a command's name about one second, and a
+file's name half a second.
+\item Its first runs on the board found a fault in the firmware. A packet
+to the tether with a run of exactly 254 bytes that are not zero, then a
+zero, lost the zero: the COBS encoder took it for the end of a full
+block, which has none. The history file, growing a line at a time, made
+a sector like that, and the tether stopped at the short packet. Fixed in
+\file{firmware/one/util/cobs.h}; the same sectors, copied on the board,
+then came through whole.
+\item CMOC made \texttt{err ? -1 : path}, with \texttt{path} a byte, a
+byte expression: 255, not $-1$. So every failed open looked like path
+255, until it was written as two statements.
 \end{itemize}
 
 \section{info}

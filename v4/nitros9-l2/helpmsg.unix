@@ -2,6 +2,7 @@
 Unix-style commands on the TFR/911H (try "man <name>"):
   ls ll cat cp mv rm mkdir rmdir pwd cd ps df less man
   grep clear uname exit vi vim info   and: tetris zm beep click
+The shell is tsh ("man tsh"): arrow keys, history, Tab, a path.
 FujiNet ("man fujinet"): fnconfig fnweather fnnews fnstocks fnbounce ...
 Most are aliases that run the OS-9 command shown by "man".
 OS-9 paths use / like Unix; /DD is the disk, . and .. work.
@@ -35,9 +36,10 @@ Usage : Delete a directory and what is in it (it asks first).
 Syntax: pwd
 Usage : Print the data (working) directory.  pxd prints the execution directory.
 @CD
-Syntax: cd <path>          (Shell built-in, same as chd)
-Usage : Change the data (working) directory.  chx changes the execution
-        directory, where commands are found.
+Syntax: cd [<path> | -]    (built in, same as chd)
+Usage : Change the data (working) directory: to /DD with no path, back
+        to the last one with -.  chx changes the execution directory,
+        where commands are found.
 @PS
 Syntax: ps [-e]            (runs: procs)
 Usage : List processes.  -e lists everyone's.
@@ -62,8 +64,44 @@ Usage : Clear the screen.
 Syntax: uname
 Usage : Say what this is.
 @EXIT
-Syntax: exit               (Shell built-in)
-Usage : Leave this shell.
+Syntax: exit [<status>]    (built in)
+Usage : Leave this shell.  Leaving tsh after booting gives the Shell.
+@TSH
+Syntax: tsh [<file>]       (runs from startup; exit gives the old Shell)
+Usage : The shell, with line editing.  Commands are the Shell's
+        (! < > >> # & ; and procedure files): tsh hands each line on.
+        Left Right ^B ^F, ^A ^E start and end, Esc-b Esc-f words,
+        Backspace, ^D delete, ^W word, ^K ^U to the end/start, ^X line,
+        ^Y put back, ^T swap, ^L redraw, ^C cancel, Tab completes (Tab
+        Tab lists), Up Down history, Shift-Up/Down history that starts
+        as the line does, ^R search.  Built in: cd chd chx path history
+        alias unalias source which set w kill setpr ex exit, and
+        PATH= PROMPT= COLS=.  Runs /DD/SYS/tshrc first; the history is
+        kept in /DD/SYS/tsh_history.
+@PATH
+Syntax: path [<dir> ...]   (tsh built-in; or PATH=<dir>:<dir>)
+Usage : Show or set where tsh looks for a command that is not in memory
+        or in the execution directory.  +<dir> adds one at the end,
+        -<dir> takes one out, and - empties the path.
+@HISTORY
+Syntax: history [<n> | -c] (tsh built-in; alias h)
+Usage : List the lines typed (the last n), or -c forgets them.
+@ALIAS
+Syntax: alias [<name> [<text>]]  (tsh built-in)
+Usage : Make a command's first word stand for text, such as
+        "alias ll dir -e".  With just a name, show it; with nothing,
+        list them all.  unalias <name> removes one.
+@WHICH
+Syntax: which <name> ...   (tsh built-in)
+Usage : Say what a command is: an alias, built in, in memory, in the
+        execution directory, or which directory of the path.
+@SET
+Syntax: set                (tsh built-in)
+Usage : Show the settings: PATH=, PROMPT= (%d directory, %w its last
+        name, %h history number, %e exit status, %t time) and COLS=.
+@SOURCE
+Syntax: source <file>      (tsh built-in, same as .)
+Usage : Run the commands in a file in this tsh, as tshrc is.
 @TETRIS
 Syntax: tetris
 Usage : Play Tetris.  Arrows or a/d move, up or w rotates, down or s drops

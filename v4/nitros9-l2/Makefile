@@ -16,9 +16,10 @@ B09DSK = $(NITROS9_DIR)/3rdparty/packages/basic09/Basic09_v010100.dsk
 LWASM ?= lwasm
 LWLINK ?= lwlink
 LWAR ?= lwar
-# Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html).
+# Games are C, compiled with CMOC (http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html),
+# and so are vi, info and tsh (the shell with line editing, in tsh/).
 CMOC ?= cmoc
-GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/info)
+GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/info build/tsh)
 # The FujiNet commands (see fujinet/README.md), and the FujiNet programs
 # in C, which need CMOC too.
 FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
@@ -41,7 +42,7 @@ $B/tfr911-level2.dsk: $B/Makefile FORCE
 	$(MAKE) -C $B
 $B/tfr911-level2-fn.t35 $B/tfr911-level2-fn.o9b: $B/tfr911-level2.dsk
 
-build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $(GAMES) $(FN_CMDS) $(FN_APPS)
+build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup tsh/tshrc build/grep build/helpmsg $(GAMES) $(FN_CMDS) $(FN_APPS)
 	cp -f $< $@
 	$(OS9_TOOL) copy -l -r startup $@,startup
 	$(OS9_TOOL) attr -q -r -w -pr $@,startup
@@ -56,6 +57,7 @@ build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup build/grep build/helpmsg $
 	$(OS9_TOOL) makdir $@,SYS
 	$(OS9_TOOL) copy -l -r $(NITROS9_DIR)/level1/sys/errmsg $@,SYS/errmsg
 	$(OS9_TOOL) copy -l -r build/helpmsg $@,SYS/helpmsg
+	$(OS9_TOOL) copy -l -r tsh/tshrc $@,SYS/tshrc
 	if ! $(OS9_TOOL) dir $@,CMDS | grep -qw basic09 && test -f $(B09DSK); then \
 	  for f in basic09_6809:basic09 runb_6809:runb inkey:inkey syscall:syscall; do \
 	    $(OS9_TOOL) copy -r $(B09DSK),CMDS/$${f%%:*} $@,CMDS/$${f##*:} && \
@@ -257,6 +259,14 @@ build/vi: games/vi.c
 build/info: games/info.c
 	mkdir -p build
 	cd build && $(CMOC) --os9 --function-stack=0 --add-os9-stack-space=1024 -o info ../games/info.c
+build/tsh: tsh/tsh.c
+	mkdir -p build
+	cd build && $(CMOC) --os9 --function-stack=0 --add-os9-stack-space=3072 -o tsh ../tsh/tsh.c
+# tsh for this computer, for testing: commands go to /bin/sh, and
+# TSH_EXECDIR, TSH_HISTORY and TSH_RC stand in for the OS-9 places.
+build/tsh-host: tsh/tsh.c
+	mkdir -p build
+	$(CC) -O2 -Wall -o $@ tsh/tsh.c
 
 # vi for this computer, for testing
 build/vi-host: games/vi.c
@@ -306,6 +316,8 @@ install: $(NEW)
 	    if [ $$d = CMDS ]; then $(OS9_TOOL) attr -q -e -pe $(DISK),$$d/$$f; fi; \
 	  done; \
 	done
+	@$(OS9_TOOL) list $(DISK),startup 2>/dev/null | grep -qw tsh || \
+	  echo "To start tsh when booting, add the line \"tsh </term\" to $(DISK)'s startup."
 	@echo "Updated $(DISK).  Press RESET on the board to boot the new OS9Boot."
 
 # A copy of DISK (your files and all) that boots from the FujiNet:

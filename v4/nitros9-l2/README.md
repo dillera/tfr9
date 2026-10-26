@@ -66,6 +66,34 @@ tether, then:
 make install DISK=level2.dsk OS9_TOOL=...   # then press RESET on the board
 ```
 
+## The shell: tsh
+
+`startup` ends with `tsh </term`, so after booting you type to `tsh`
+(`tsh/tsh.c`, in C).  It reads each line itself and then hands it to the
+OS-9 Shell, so commands keep the Shell's syntax (`!`, `<`, `>`, `>>`, `#`,
+`&`, `;`, procedure files).  It adds:
+
+* line editing: Left/Right, `^A` `^E`, Esc-b/Esc-f, Backspace, `^D`, `^W`,
+  `^K` `^U` `^X`, `^Y`, `^T`, `^L`, `^C`; long lines scroll sideways;
+* history: Up/Down, Shift-Up/Down for lines that start as this one does,
+  `^R` to search; the last 100 lines are kept in `/DD/SYS/tsh_history`
+  (written ten at a time, and on exit);
+* Tab completion of command names (built-in commands, aliases, the
+  execution directory, the path) and file names;
+* a search path for commands not in memory or the execution directory
+  (`path`, `PATH=`), set in `/DD/SYS/tshrc`; a command found there is
+  loaded by `tsh` and unlinked when it ends;
+* `cd -`, `alias`, `history`, `which`, `source`, `set`, `PROMPT=`
+  (`%d` shows the directory).
+
+`exit` leaves `tsh`, and after booting that gives the old Shell.  `tsh`
+reads keys on its own path to `/term` with echo and the signal keys off,
+and sets bit 7 of `$FF42` while editing for the arrow keys (as `vi` does).
+`make build/tsh-host` builds it for this computer, running commands with
+`/bin/sh`, for testing.  `man tsh` on the board, and tsh(1) in the manual,
+describe it all.  `make install` leaves a disk's own `startup` alone; add
+`tsh </term` to it to start `tsh` when booting.
+
 ## Games
 
 `games/` holds C programs compiled with [CMOC](http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html)

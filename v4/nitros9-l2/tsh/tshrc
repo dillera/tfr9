@@ -1,0 +1,14 @@
+* tshrc -- tsh runs these commands when it starts (man tsh).
+*
+* Where to look for a command that is neither in memory nor in the
+* execution directory.  When booting from the FujiNet, /H0 is the
+* tether's disk.
+path /DD/CMDS /H0/CMDS
+*
+* The prompt is OS9: as for the Shell.  To see the data directory in it:
+* PROMPT="%d: "
+* (%d is the data directory, %w the last name in it, %h the history
+* number, %e the last exit status, %t the time.)
+*
+* Aliases: the first word of a command, replaced.
+alias h history
