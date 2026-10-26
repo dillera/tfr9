@@ -68,8 +68,7 @@ away what was already waiting behind it, which at 921600 baud is the next
 command, and the 6309 waits for ever for its reply.  fujinet-firmware does
 since PR 2027 (merged October 2026).
 
-On a DevKitC the firmware also needs a fix that is not upstream yet
-(branch `coco-devkitc-no-button-c` in dillera/fujinet-firmware): the pin
+On a DevKitC the firmware also needs PR 2034 (merged October 2026): the pin
 map gave a Safe Reset button to GPIO 14, which a DevKitC leaves
 unconnected, with no pull-up.  The floating pin picks up the UART beside
 it and reads as presses, each of which restarts the FujiNet; under the

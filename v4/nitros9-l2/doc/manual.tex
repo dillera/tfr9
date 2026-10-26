@@ -23,8 +23,8 @@
 
 % The manual's version: change it, and add a line to the revision history
 % on the copyright page, with each revision.
-\newcommand{\docversion}{1.2}
-\newcommand{\docdate}{18 October 2026}
+\newcommand{\docversion}{1.3}
+\newcommand{\docdate}{20 October 2026}
 
 \usepackage[hidelinks,pdftitle={TFR Manual and Reference, Version \docversion},
             pdfauthor={The TFR/9 Project}]{hyperref}
@@ -204,7 +204,7 @@ Level 2 as they run on the board.
 \begin{tabular}{@{}l l@{}}
 \bfseries Order Number: & TFR-911H-MR\\[3pt]
 \bfseries Version: & \docversion, \docdate\\[3pt]
-\bfseries Revision/Update Information: & Version \docversion: \rp{fnbattleship}{1}, Fuji Battleship.\\[3pt]
+\bfseries Revision/Update Information: & Version \docversion: release jamesBrown1, and its \emph{Installation Guide}.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
 \end{tabular}\par}
@@ -225,6 +225,9 @@ versioned; the cover; \cmd{fnbounce}; UTF-8 in the tether.\\
 forecast, and a cache; the first, as \cmd{fnwx}.\\
 1.2 & 18 Oct 2026 & \cmd{fnbattleship}: Fuji Battleship, in color and
 with sound.\\
+1.3 & 20 Oct 2026 & Release jamesBrown1, and the \emph{TFR Installation
+Guide}; both of the FujiNet firmware's fixes are in fujinet-firmware
+itself.\\
 \end{tabular}
 
 The information in this document is subject to change without notice and
@@ -304,6 +307,9 @@ Appendix B & Describes how the software was tested.\\
 
 \section*{Related Documents}
 \begin{itemize}\setlength{\itemsep}{0pt}
+\item The \emph{TFR Installation Guide} (TFR-911H-IG), which tells how to
+install a release, flash the FujiNet, wire it to the board, and boot
+NitrOS-9 from it.
 \item \file{v4/nitros9-l2/README.md}, which this manual expands on.
 \item The NitrOS-9 documentation, at \file{nitros9.org} and in the
 NitrOS-9 source tree under \file{docs}.
@@ -633,7 +639,7 @@ Flash & 8M: the firmware, and a LittleFS file system with the web pages\\
 Radio & 2.4~GHz WiFi 802.11~b/g/n (and Bluetooth, unused here)\\
 SD card & For disk images, and the FujiNet's settings, \file{fnconfig.ini}\\
 USB & A CP2102N USB serial bridge, for flashing and for the FujiNet's own log (460{,}800 baud)\\
-Buttons & A (GPIO~0) and C, safe reset (GPIO~14)\\
+Buttons & A, the DevKitC's BOOT button (GPIO~0)\\
 LED & The bus activity light, GPIO~4\\
 \bottomrule
 \end{tabularx}
@@ -672,8 +678,10 @@ which a DevKitC leaves unconnected, and the firmware sets no pull-up on
 it, so the pin floats, picks up the UART beside it, and reads as presses;
 each one restarts the FujiNet, and under heavy disk traffic, as when
 NitrOS-9 boots from it, that is every few seconds. The fix, which takes the
-button out of the DevKitC's pin map, is in the branch
-\texttt{coco-devkitc-no-button-c} of \file{dillera/fujinet-firmware}.
+button out of the DevKitC's pin map, is pull request 2034, merged in
+October 2026 as well, so firmware built from fujinet-firmware since then
+has both fixes. Release jamesBrown1 has such firmware, built for
+FujiNet-Flasher; the \emph{TFR Installation Guide} tells how to flash it.
 \file{v4/nitros9-l2/fujinet/README.md} tells how to build and flash the
 firmware.
 

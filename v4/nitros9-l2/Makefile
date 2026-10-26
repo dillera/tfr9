@@ -335,8 +335,17 @@ doc/tfr-manual.pdf: doc/manual.tex
 	done
 	cd doc && rm -f tfr-manual.aux tfr-manual.log tfr-manual.toc tfr-manual.out
 
+# The TFR Installation Guide, for a release (the same fonts).
+install-guide: doc/tfr-install-guide.pdf
+doc/tfr-install-guide.pdf: doc/install.tex
+	cd doc && for pass in 1 2; do \
+	  xelatex -interaction=nonstopmode -halt-on-error -jobname=tfr-install-guide install.tex >/dev/null || exit 1; \
+	done
+	cd doc && rm -f tfr-install-guide.aux tfr-install-guide.log tfr-install-guide.toc \
+	  tfr-install-guide.out tfr-install-guide.lof tfr-install-guide.lot
+
 clean:
 	rm -rf build
 
 FORCE:
-.PHONY: all clean install fujinet-disk fujinet-lib stories manual FORCE
+.PHONY: all clean install fujinet-disk fujinet-lib stories manual install-guide FORCE
