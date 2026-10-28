@@ -6,7 +6,7 @@ At the `TCL>` prompt, `bye` starts TurbOS and `l2` starts NitrOS-9 Level 2.
 The *TFR Manual and Reference*, `doc/tfr-manual.pdf`, describes everything
 here in the manner of a 1990s ULTRIX manual; `make manual` rebuilds it.
 Its companion, the *TFR Installation Guide*, `doc/tfr-install-guide.pdf`,
-takes a release (the first is `dist/jamesBrown1` at the top of this
+takes a release (the latest is `dist/jamesBrown1.1` at the top of this
 repository) from flashing the FujiNet to booting NitrOS-9 from it;
 `make install-guide` rebuilds it.
 

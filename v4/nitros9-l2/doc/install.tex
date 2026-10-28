@@ -27,8 +27,8 @@
 
 % The release this guide goes with: change it, and add a line to the
 % revision history on the copyright page, with each release.
-\newcommand{\release}{jamesBrown1}
-\newcommand{\docdate}{20 October 2026}
+\newcommand{\release}{jamesBrown1.1}
+\newcommand{\docdate}{25 October 2026}
 
 \PassOptionsToPackage{hyphens}{url}
 \usepackage[hidelinks,pdftitle={TFR Installation Guide, Release \release},
@@ -225,7 +225,7 @@ boards together, and boot NitrOS-9 Level 2 from the FujiNet.
 \begin{tabular}{@{}l l@{}}
 \bfseries Order Number: & TFR-911H-IG\\[3pt]
 \bfseries Release: & \release, \docdate\\[3pt]
-\bfseries Revision/Update Information: & This is a new guide.\\[3pt]
+\bfseries Revision/Update Information: & \cmd{tsh}, the shell; a fix to the TFR/911H firmware.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Firmware: & TFR/911H firmware v4; FujiNet firmware v1.6.2-dev (dca3ee4a3)\\[3pt]
 \bfseries Hardware: & TFR/911H; an ESP32 DevKitC with 8~MB of flash and PSRAM\\
@@ -236,7 +236,10 @@ boards together, and boot NitrOS-9 Level 2 from the FujiNet.
 
 \textbf{Revision history}\\[2pt]
 \begin{tabular}{@{}l l p{3.9in}@{}}
-\release & 20 Oct 2026 & First printing.\\
+jamesBrown1 & 20 Oct 2026 & First printing.\\
+jamesBrown1.1 & 25 Oct 2026 & \cmd{tsh}, the shell with line editing and
+history; the TFR/911H firmware no longer loses a byte of some disk
+writes; Appendix~A says what is new.\\
 \end{tabular}
 
 The information in this document is subject to change without notice and
@@ -341,7 +344,7 @@ at \lfile{github.com/FujiNetWIFI/fujinet-firmware/wiki}.
 \midrule
 \texttt{\$} & A shell prompt on your computer.\\
 \texttt{TCL>} & The TFR/911H firmware's prompt, before an OS boots.\\
-\texttt{OS9:} & The NitrOS-9 Shell prompt.\\
+\texttt{OS9:} & The prompt of \cmd{tsh}, NitrOS-9's shell here.\\
 \type{bold type} & In examples, what you type.\\
 \var{italic} & Something you supply: a file name, a device.\\
 \key{Ctrl/]} & Hold down the Ctrl key while you press \key{]}.\\
@@ -349,7 +352,7 @@ at \lfile{github.com/FujiNetWIFI/fujinet-firmware/wiki}.
 \pin{J3-9} & Pin 9 of the header marked J3.\\
 \pin{IO33} & A pin of the ESP32 board, by the name printed beside it:
 here, GPIO~33.\\
-\file{jamesBrown1/} & A file or folder of the release.\\
+\file{\release/} & A file or folder of the release.\\
 \bottomrule
 \end{tabularx}
 
@@ -406,17 +409,17 @@ on your computer.
 
 \section{What Is in the Release}
 
-The release is a folder, \file{jamesBrown1/}, laid out as
+The release is a folder, \file{\release/}, laid out as
 Figure~\ref{fig:tree} shows. Appendix~A lists every file with its size and
 checksum.
 
 \begin{figure}[htbp]
 \begin{exsmall}
-jamesBrown1/
+\release/
   README.txt                       what this is, and the steps in brief
-  TFR-Installation-Guide-jamesBrown1.pdf
+  TFR-Installation-Guide-\release.pdf
                                    this guide
-  TFR-Manual-and-Reference-1.3.pdf the TFR Manual and Reference
+  TFR-Manual-and-Reference-1.4.pdf the TFR Manual and Reference
   SHA256SUMS                       a checksum for every file
   tfr911h/
     tfr911h_v4.uf2                 the TFR/911H's firmware                     (Chapter 4)
@@ -700,7 +703,7 @@ Selected}.
   \node[anchor=east, align=right] at (1.45,2.58) {Custom Firmware File:\\(optional)};
   \draw[fill=white] (\fx,2.48) rectangle (4.5,2.68);
   \node[anchor=west, font=\sffamily\tiny] at (\fx+0.03,2.58)
-    {.../jamesBrown1/fujinet/fujinet-COCO-HS-UART-v1.6.2-dev-dca3ee4a3.zip};
+    {.../\release/fujinet/fujinet-COCO-HS-UART-v1.6.2-dev-dca3ee4a3.zip};
   \draw[fill=black!8, rounded corners=1pt] (4.56,2.47) rectangle (5.18,2.69)
     node[midway]{Browse};
   \node[anchor=east, align=right] at (1.45,2.16) {Firmware selection:\\(official releases)};
@@ -800,7 +803,7 @@ card, keeping the folder \file{tfr911}. Figure~\ref{fig:card} shows the
 card when you are done.
 
 \begin{ex}
-$ \textbf{cd jamesBrown1}
+$ \textbf{cd \release}
 $ \textbf{cp -R sdcard/ /Volumes/FUJINET/}               \textrm{\small (macOS)}
 $ \textbf{cp -R sdcard/. /media/\$USER/FUJINET/}         \textrm{\small (Linux)}
 \end{ex}
@@ -1073,7 +1076,7 @@ time:
 macOS & Files downloaded from the Internet are quarantined, and macOS
 will not run a quarantined program that is not signed. Take the release
 out of quarantine:
-\texttt{\textbf{xattr -dr com.apple.quarantine jamesBrown1}}\\
+\texttt{\textbf{xattr -dr com.apple.quarantine \release}}\\
 Linux & Your user must be in the group that owns the board's serial
 port, \file{/dev/ttyACM0}: \type{sudo usermod -aG dialout \$USER}, then
 log out and in again (on Arch Linux, the group \texttt{uucp}).\\
@@ -1090,7 +1093,7 @@ SF Mono, DejaVu Sans Mono) all have.
 To check the firmware and the tether, run \file{run-tfr.sh} with
 \texttt{none}, which connects without booting anything:
 \begin{ex}
-$ \textbf{cd jamesBrown1/tether}
+$ \textbf{cd \release/tether}
 $ \textbf{sh run-tfr.sh none}
 TFR/911H on /dev/cu.usbmodem13401; disk .../level2.dsk; boot nothing.
 ^C goes to OS-9.  Quit with ^] .
@@ -1304,7 +1307,7 @@ With the FujiNet powered and connected, run \file{run-tfr.sh} with no
 argument. It starts the tether and types \cmd{l2fn} at the
 \texttt{TCL>} prompt for you:
 \begin{ex}
-$ \textbf{cd jamesBrown1/tether}
+$ \textbf{cd \release/tether}
 $ \textbf{sh run-tfr.sh}
 TFR/911H on /dev/cu.usbmodem13401; disk .../level2.dsk; boot l2fn.
 ^C goes to OS-9.  Quit with ^] .
@@ -1322,8 +1325,6 @@ Tue Oct 20 19:42:16 2026
 http://www.nitros9.org
 
 NitrOS-9 Level 2 on the TFR/911H.  Unix-style commands: man unix
-Shell
-
 OS9:
 \end{ex}
 
@@ -1332,6 +1333,13 @@ The lines in brackets are the firmware's, as it hands the board to the
 running, from the FujiNet's SD card. (\texttt{Tandy Color
 Computer~3} is the machine NitrOS-9 was built for; the TFR/911H's
 firmware presents the 6309 with what NitrOS-9 needs of one.)
+
+\texttt{OS9:} is the prompt of \cmd{tsh}, the shell, which the last line
+of \file{startup} starts. The arrow keys move about in the line you are
+typing and bring back the lines you typed before; \key{Tab} finishes the
+name of a command or a file; \type{man tsh} tells the rest. \type{exit}
+gives NitrOS-9's own Shell, also with the prompt \texttt{OS9:}; type
+\type{tsh} to come back.
 
 At \texttt{TCL>} you can also type \cmd{l2fn} yourself, after
 \type{sh run-tfr.sh none}.
@@ -1362,7 +1370,7 @@ Figure~\ref{fig:boot} shows what happens between \cmd{l2fn} and the
   \bootmsg{5.25}{3.5}{-2.85}{OP\_READEX: OS9Boot, by sectors}
   \bootmsg{3.5}{5.25}{-3.15}{256 bytes, and a status}
   \draw[arr] (5.25,-3.45) -- ++(0.3,0) -- ++(0,-0.25) -- ++(-0.3,0);
-  \node[lab, anchor=east, align=right] at (5.2,-3.57) {the kernel starts: /DD is /X0,\\\texttt{startup}, the Shell};
+  \node[lab, anchor=east, align=right] at (5.2,-3.57) {the kernel starts: /DD is /X0,\\\texttt{startup}, then \texttt{tsh}};
   \bootmsg{5.25}{0}{-4.15}{\texttt{OS9:}, through the console, to your window}
 \end{tikzpicture}
 \caption{Booting from the FujiNet}\label{fig:boot}
@@ -1382,9 +1390,9 @@ its own flash, and starts the 6309.
 becker port at \file{\$FF45}--\file{\$FF46} that the firmware makes of
 the link.
 \item \file{OS9Boot} names \file{/X0}, the FujiNet's slot~1, as
-\file{/DD}, the system disk. NitrOS-9 runs \file{startup} from it, then
-the Shell, whose \texttt{OS9:} prompt comes to your window through the
-tether.
+\file{/DD}, the system disk. NitrOS-9 runs \file{startup} from it, and
+\file{startup} starts \cmd{tsh}, the shell, whose \texttt{OS9:} prompt
+comes to your window through the tether.
 \end{steps}
 
 \section{Where Everything Is}
@@ -1545,7 +1553,7 @@ board found, or more than one candidate. & Plug it in; or set
 in.\\
 macOS: \texttt{cannot be opened because the developer cannot be
 verified}. & The release is quarantined. & \type{xattr -dr
-com.apple.quarantine jamesBrown1}\\
+com.apple.quarantine \release}\\
 Linux: \texttt{permission denied} on \file{/dev/ttyACM0}. & Your user is
 not in the serial port's group. & \type{sudo usermod -aG dialout \$USER};
 log out and in.\\
@@ -1588,6 +1596,30 @@ FujiNet is not on the WiFi. & Set the WiFi (Section~\ref{sec:wifi}).\\
 \chapterpages
 \renewcommand{\thesectname}{About This Release}
 
+\section{What Is New}
+
+Release \release{} follows jamesBrown1, of 20 October 2026.
+
+\begin{itemize}\setlength{\itemsep}{0.4ex}
+\item \cmd{tsh}, a shell with line editing, history, completion, and a
+search path, is the shell after booting. It hands each line to the OS-9
+Shell, so commands are typed as before. \rp{tsh}{1}, in the \emph{TFR
+Manual and Reference}, version~1.4, describes it.
+\item The TFR/911H firmware has a fix. A disk write of a sector with a
+run of exactly 254 bytes that are not zero, then a zero---as at the end of
+a text file---reached the tether a byte short, and the tether stopped. The
+encoder of the firmware's packets now sends such a sector whole.
+\item The tethers are built again, from the same source, with a later
+Go. The FujiNet firmware and \file{fnconfig.ini} are as they were.
+\end{itemize}
+
+From jamesBrown1, flash the new \file{tfr911h/tfr911h\_v4.uf2}
+(Chapter~4); the FujiNet needs nothing. For \cmd{tsh}, put the new
+\file{sdcard/tfr911/level2-fn.dsk} on the card in place of the old one
+(see \emph{Coming and Going} in Chapter~6), after copying any files of
+your own from \file{/DD} to keep them, to \file{/H0} for one; and
+replace \file{tether/level2.dsk} the same way.
+
 \section{The Files}
 
 Table~\ref{tab:files} lists the files of release \release{} with their
@@ -1595,7 +1627,7 @@ sizes and SHA-256 checksums. \file{SHA256SUMS}, in the release, lists the
 same and the rest (this guide, the manual, \file{README.txt}, and the
 licenses). To check them all:
 \begin{ex}
-$ \textbf{cd jamesBrown1}
+$ \textbf{cd \release}
 $ \textbf{shasum -a 256 -c SHA256SUMS}          \textrm{\small (macOS;\ on Linux, sha256sum -c SHA256SUMS)}
 \end{ex}
 
@@ -1605,28 +1637,28 @@ $ \textbf{shasum -a 256 -c SHA256SUMS}          \textrm{\small (macOS;\ on Linux
 \toprule
 \textbf{File, and its SHA-256} & \textbf{Bytes}\\
 \midrule
-\file{tfr911h/tfr911h\_v4.uf2} & 1{,}356{,}800\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 12f6f19e594f3b25570ad23374d3cbe888bac800f3e094e46fdab670e5e03388}}\\[2pt]
+\file{tfr911h/tfr911h\_v4.uf2} & 1{,}357{,}312\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 35bd79c73dcbfe49ee75691567ae4f7e46f6a7eea208407729d088def06921f8}}\\[2pt]
 \file{fujinet/fujinet-COCO-HS-UART-v1.6.2-dev-dca3ee4a3.zip} & 6{,}286{,}854\\
 \multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize dcb995801d05ef61c553bf4f9647c8697661db51c4912eb0b934b632f88afd50}}\\[2pt]
 \file{sdcard/fnconfig.ini} & 933\\
 \multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 0d40009da101ac7f6b175eff7aea3e09323d1e94021aa9146153f2489dc43228}}\\[2pt]
-\file{sdcard/tfr911/level2-fn.dsk} & 505{,}088\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 374e5a44082d374a5b63ef4720759ec78b2012a94cfde3e1192ba760d0d7a553}}\\[2pt]
-\file{tether/level2.dsk} & 484{,}608\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize c99af8d73e10ae389991adbe0e9e65c058fa0c23afc69077d20be07844565077}}\\[2pt]
-\file{tether/run-tfr.sh} & 2{,}316\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize b8deafd1ae29d48b0005a046010d777a5251d196f3f7b8508f2cfacaf08a11f3}}\\[2pt]
-\file{tether/tether-darwin-arm64} & 6{,}598{,}050\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 51f6b70acc4aa4f0f68cf806b0faf22e1de02ead3503c62fb81c76306708cada}}\\[2pt]
-\file{tether/tether-darwin-amd64} & 7{,}038{,}528\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize d614e9a7859da87f2fb414b09d48a56c3335fdfc96de535c4a6412c8c71ea651}}\\[2pt]
-\file{tether/tether-linux-amd64} & 6{,}926{,}520\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 02f55d45d3b5b160638360c5830d547cc8de5f50de52d52b79f47d9aa9a47757}}\\[2pt]
-\file{tether/tether-linux-arm64} & 6{,}553{,}784\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 8947e2b737bdcb523024448ed21f3f05af7c21cb1f5ee10c0a20bde369acd98f}}\\[2pt]
-\file{tether/tether-linux-arm} & 6{,}815{,}928\\
-\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 04d5eb30632d489f1c74e780b02b2f92ffdfe89cad4681e9d979d92760708999}}\\[2pt]
+\file{sdcard/tfr911/level2-fn.dsk} & 526{,}336\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 9750467002e5f68b15986e60bbfd9898802f69c664ab3a713161bc1737112ecc}}\\[2pt]
+\file{tether/level2.dsk} & 505{,}856\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 9d9ef2d3767fee0312f3f731b781fe2ab0d1f82268c38282723535a60a431cea}}\\[2pt]
+\file{tether/run-tfr.sh} & 2{,}318\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 899f8271cfe26db80583a3cf7a1b84186f865e6be8084233191b402d4b69b7ce}}\\[2pt]
+\file{tether/tether-darwin-arm64} & 7{,}291{,}250\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize c85a4ac0bb669443dc038b6eeafa42702109bf30ae589ff3a7254e9d8dbcec51}}\\[2pt]
+\file{tether/tether-darwin-amd64} & 7{,}865{,}856\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 7285326ea50d2c58768826ed908ca13de92f03a8dbc451966f23a8587ccbfdef}}\\[2pt]
+\file{tether/tether-linux-amd64} & 7{,}696{,}544\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize fa9dcd189c3ced0ec8cc48330b0885def0de0da7eb11d830f82002059bd61690}}\\[2pt]
+\file{tether/tether-linux-arm64} & 7{,}143{,}584\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 14eb9f55d00e1ba428d2e62566cdadf8e93d0d59884c01990142ba48f2cff112}}\\[2pt]
+\file{tether/tether-linux-arm} & 7{,}602{,}336\\
+\multicolumn{2}{@{}l@{}}{\quad\texttt{\scriptsize 1533faeca9b57d102748ae8071325305b7ee25d3a92e5b4b08ffd219d64917f8}}\\[2pt]
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -1634,16 +1666,16 @@ $ \textbf{shasum -a 256 -c SHA256SUMS}          \textrm{\small (macOS;\ on Linux
 \section{What Is in Each}
 
 \begin{keys}[1.45in]
-TFR/911H firmware & v4, built 20 October 2026 from \file{dillera/tfr9},
-branch \texttt{nitros9-l2-tfr911}, commit \texttt{77ad30c}, with pico-sdk
+TFR/911H firmware & v4, built 25 October 2026 from \file{dillera/tfr9},
+branch \texttt{nitros9-l2-tfr911}, commit \texttt{6c08f93}, with pico-sdk
 2.3.0 and the Arm GNU Toolchain 14.2. It holds TurbOS, the firmware's
 console, and the two NitrOS-9 Level 2 kernels.\\
 NitrOS-9 disks & NitrOS-9/6809 Level 2 V3.3.0, built from
 \file{dillera/nitros9} commit \texttt{5afdac58} by the same \file{tfr9}
 commit, with the TFR/911H's commands and drivers, the FujiNet commands,
-and the C programs: \cmd{fnweather}, \cmd{fnnews}, \cmd{fnstocks},
-\cmd{fnbounce}, \cmd{fnbattleship}, \cmd{tetris}, \cmd{zm}, \cmd{vi}, and
-\cmd{info}. The two disks differ only in their \file{OS9Boot} and boot track.\\
+and the C programs: \cmd{tsh}, \cmd{fnweather}, \cmd{fnnews},
+\cmd{fnstocks}, \cmd{fnbounce}, \cmd{fnbattleship}, \cmd{tetris},
+\cmd{zm}, \cmd{vi}, and \cmd{info}. The two disks differ only in their \file{OS9Boot} and boot track.\\
 FujiNet firmware & fujinet-firmware v1.6.2-dev, built 20 October 2026 for
 the board \texttt{fujinet-coco-devkitc-centipede} from
 \file{FujiNetWIFI/fujinet-firmware} commit \texttt{dca3ee4a3}, ``[coco]
@@ -1651,31 +1683,41 @@ Disable BUTTON\_C on DevKitC pin map (\#2034)'', by its own
 \file{build.sh -z}, which makes the zip that FujiNet-Flasher reads. It
 includes pull request 2027, which reads the version byte NitrOS-9 sends
 after \texttt{OP\_DWINIT}, and pull request 2034.\\
-The tethers & Built 20 October 2026 from the same \file{tfr9} commit with
-Go 1.25, without cgo, so each is one file that needs nothing else.\\
+The tethers & Built 25 October 2026 from the same \file{tfr9} commit with
+Go 1.27, without cgo, so each is one file that needs nothing else. Their
+source is the same as release jamesBrown1's.\\
 \end{keys}
 
 \section{How It Was Tested}
 
 \begin{itemize}\setlength{\itemsep}{0.4ex}
-\item The TFR/911H firmware is the same program, built from the same
-source, as the firmware the board these pages were written with has run
-since 17 October 2026: the two differ only in the date and time of the
-build that they carry. With it, NitrOS-9 was booted from the FujiNet with
-\cmd{l2fn}; \cmd{fnweather}, \cmd{fnnews}, \cmd{fnstocks}, and
-\cmd{fnbounce} were run, and two full games of \cmd{fnbattleship}
-played.
+\item This file of the TFR/911H firmware was flashed to the board these
+pages were written with, and booted NitrOS-9 both ways (below). A build
+of the same source made just before it, which differs only in the
+date and time of the build, was the firmware for the rest: \cmd{tsh}
+passed 44 checks, booted from a copy of the tether's
+disk, and a shorter run booted from the FujiNet; and nine files of 248 to
+256 bytes were copied on the board, two of whose writes were of the kind
+the fix is for, and came out the same as the files. The FujiNet programs
+were last run, and two games of \cmd{fnbattleship} played, with the
+firmware before the fix, which differs from this only there.
 \item The FujiNet firmware was built from fujinet-firmware commit
 \texttt{dca3ee4a3}, whose source is identical to that of the firmware on
 the FujiNet those tests used; that firmware was flashed with PlatformIO,
 not with FujiNet-Flasher from this zip.
-\item The disks were made by the same Makefile, from the same source, as
-the disks those tests used. \file{level2-fn.dsk} has the same
-\file{OS9Boot}, byte for byte, and the same 114 commands as the disk those
-tests booted from the FujiNet, but none of the tester's own files.
-\item \file{run-tfr.sh} was checked on macOS, with a stand-in for the
-tether. The tethers were built from the same source as the tether that
-ran the tests, but these builds have not yet been run with the board.
+\item The disks were made by the same Makefile and source as the disks
+those tests used. \file{level2-fn.dsk} has the same \file{OS9Boot}, byte
+for byte, and the same 115 commands as the disk booted from the FujiNet,
+but none of the tester's own files.
+\item \cmd{tsh} was also built for a Unix computer and passed 68 checks
+on a pseudo-terminal, read back with a terminal emulator.
+\item \file{run-tfr.sh} and \file{tether-darwin-arm64}, from the release,
+booted NitrOS-9 on the board both ways: \cmd{l2} from the release's
+\file{level2.dsk}, and \cmd{l2fn} from a disk with the same
+\file{OS9Boot} and commands as its \file{level2-fn.dsk}; then \cmd{tsh}
+ran commands, completed one with \key{Tab}, and \cmd{fnstatus} reached
+the FujiNet. The other four tethers are built from the same source but
+have not been run with the board.
 \end{itemize}
 
 \section{Source and Licenses}
@@ -1717,7 +1759,7 @@ CMOC & 0.1.97\\
 ToolShed (\cmd{os9}) & commit \texttt{ab6fef5}\\
 pico-sdk & 2.3.0\\
 Arm GNU Toolchain & 14.2.Rel1\\
-Go & 1.25.6\\
+Go & 1.27.3\\
 PlatformIO espressif32 platform & 6.10.0\\
 XeTeX & TeX Live 2025\\
 \bottomrule
