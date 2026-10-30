@@ -21,10 +21,11 @@ LWAR ?= lwar
 CMOC ?= cmoc
 GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/info build/tsh)
 # The FujiNet commands (see fujinet/README.md), and the FujiNet programs
-# in C, which need CMOC too.
+# in C, which need CMOC too; and splash, the screen startup shows, which
+# asks the FujiNet for its address.
 FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
 FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks build/fn/fnbounce \
-  build/fn/fnweather build/fn/fnbattleship)
+  build/fn/fnweather build/fn/fnbattleship build/fn/splash)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -203,6 +204,19 @@ $(BATTLESHIP_VERSION_O): FN_CFLAGS += '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
 build/fn/fnbattleship: $(BATTLESHIP_OBJS) $(FN_C_OBJS) $(FNLIB_A)
 	cd build/fn && $(CMOC) --os9 -o fnbattleship \
 	  $(patsubst build/fn/%,%,$(BATTLESHIP_OBJS) $(FN_C_OBJS)) -L../fnlib -lfujinet
+
+# splash: the boot screen.  Its picture, splash/art.h, is made by
+# splash/art.py.  build/splash-host shows it here, with made-up values.
+splash/art.h: splash/art.py
+	python3 splash/art.py > $@
+build/fn/splash.o: splash/splash.c splash/art.h
+	mkdir -p build/fn
+	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
+build/fn/splash: build/fn/splash.o $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o splash splash.o -L../fnlib -lfujinet
+build/splash-host: splash/splash.c splash/art.h
+	mkdir -p build
+	$(CC) -O2 -Wall -o $@ splash/splash.c
 
 # fnnews and fnstocks for this computer, for testing: curl and python3 are
 # the FujiNet (fujinet/c/host/fujinet-host.c, with the few fujinet-lib

@@ -94,6 +94,21 @@ and sets bit 7 of `$FF42` while editing for the arrow keys (as `vi` does).
 describe it all.  `make install` leaves a disk's own `startup` alone; add
 `tsh </term` to it to start `tsh` when booting.
 
+## The boot screen: splash
+
+Before `tsh`, `startup` runs `splash` (`splash/splash.c`), which clears the
+screen and draws "TFR" and "FujiNet" in big letters, joined by the band of
+stripes from the manual's cover, with the OS, the 6309's speed (from the
+firmware's info port), memory, the disk it booted from (`/DD = /H0` or
+`/DD = /X0`, with its driver), the time, and the FujiNet's address and
+firmware.  The picture is half blocks and xterm's 256 colours, about 3.4K;
+`splash/art.py` draws it and writes `splash/art.h`.  `splash` asks the
+FujiNet only when NitrOS-9 was booted from it, or when it answers
+DriveWire's `OP_TIME` on the becker port within a fifth of a second: `dwio`
+waits for ever for an answer that never comes.  `make build/splash-host`
+shows the screen here, with made-up values.  Add `splash` to a disk's own
+`startup`, before `tsh </term`, to see it when booting.
+
 ## Games
 
 `games/` holds C programs compiled with [CMOC](http://perso.b2b2c.ca/~sarrazip/dev/cmoc.html)

@@ -23,8 +23,8 @@
 
 % The manual's version: change it, and add a line to the revision history
 % on the copyright page, with each revision.
-\newcommand{\docversion}{1.4}
-\newcommand{\docdate}{25 October 2026}
+\newcommand{\docversion}{1.5}
+\newcommand{\docdate}{30 October 2026}
 
 \usepackage[hidelinks,pdftitle={TFR Manual and Reference, Version \docversion},
             pdfauthor={The TFR/9 Project}]{hyperref}
@@ -204,7 +204,7 @@ Level 2 as they run on the board.
 \begin{tabular}{@{}l l@{}}
 \bfseries Order Number: & TFR-911H-MR\\[3pt]
 \bfseries Version: & \docversion, \docdate\\[3pt]
-\bfseries Revision/Update Information: & Version \docversion: \cmd{tsh}, the shell with line editing.\\[3pt]
+\bfseries Revision/Update Information: & Version \docversion: \cmd{splash}, the boot screen.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
 \end{tabular}\par}
@@ -231,6 +231,8 @@ itself.\\
 1.4 & 25 Oct 2026 & \cmd{tsh}, the shell with line editing, history,
 completion, and a search path; the firmware no longer loses a byte of a
 packet with 254 bytes that are not zero before a zero.\\
+1.5 & 30 Oct 2026 & \cmd{splash}, the boot screen: TFR and FujiNet in big
+letters, in color, and the system at a glance.\\
 \end{tabular}
 
 The information in this document is subject to change without notice and
@@ -522,6 +524,7 @@ and a search path\\
 \cmd{ps}, \cmd{df}, and other Unix names for OS-9 commands\\
 \rp{vi}{1} & A small vi, also called \cmd{vim}\\
 \rp{info}{1} & Everything the system knows about itself\\
+\rp{splash}{1} & The boot screen: TFR and FujiNet, and the system at a glance\\
 \rp{grep}{1} & Print lines that contain a string\\
 \rp{pwd}{1} & Print the data or execution directory\\
 \rp{clear}{1} & Clear the screen\\
@@ -1593,6 +1596,7 @@ fujinet(1) & Commands for the FujiNet: \textmd{fnstatus, fnlisthosts, fnlistdevs
 grep(1) & Print lines that contain a string\\
 info(1) & Show what the system and the hardware know about themselves\\
 pwd(1) & Print the data or execution directory\\
+splash(1) & The boot screen: TFR and FujiNet in big letters, and the system\\
 tsh(1) & The shell: line editing, history, completion, and a search path\\
 unix(1) & Unix-style names for OS-9 commands: \textmd{ls, cd, cat, cp, mv, rm, ps, df,} \ldots\\
 vi(1) & A small vi, also called \textmd{vim}\\
@@ -2134,6 +2138,55 @@ OS9:\textbf{pxd}
 \rh{See Also} \rp{unix}{1}
 \end{refpage}
 
+\refentry{splash}{1}{the boot screen}
+\begin{refpage}
+\rh{Name} \cmd{splash} -- the boot screen: TFR and FujiNet, and the system
+at a glance
+\rh{Syntax} \cmd{splash}
+\rh{Description}
+\file{startup} runs \cmd{splash} after booting, before it starts
+\rp{tsh}{1}. \cmd{splash} clears the screen and draws \sans{TFR} in big
+letters, in the colors of this manual's cover, and \sans{FujiNet}, joined
+by the cover's band of five stripes. Beside and below them it writes:
+
+\begin{keys}[0.85in]
+\sans{System} & The OS's name and version, from the \file{Init} module.\\
+\sans{CPU} & The 6309's speed, as the firmware measures it (see
+\rp{tfr911h}{4}).\\
+\sans{Memory} & The RAM, and how much of it is free.\\
+\sans{Booted} & \file{/DD}, and the other name of its drive, with its
+driver and drive number: \texttt{/DD~=~/H0} \texttt{(EmuDsk,~drive~0)} for the
+tether's disk, \texttt{/DD~=~/X0} \texttt{(rbdw,~drive~0)} for the FujiNet's. These
+come from the descriptors in the module directory.\\
+\sans{Time} & The day and the time.\\
+\sans{FujiNet} & Its address on the network and the version of its
+firmware; \texttt{no WiFi} if it has no address, or \texttt{no answer}.\\
+\end{keys}
+
+Then it gives a hint, \texttt{man unix} and \texttt{man tsh}, and leaves
+the cursor a line below, where \cmd{tsh}'s prompt appears. Type
+\type{splash} to see it again.
+
+\cmd{splash} asks the FujiNet only when NitrOS-9 was booted from it, or
+when something on the becker port answers DriveWire's \texttt{OP\_TIME}
+with a time within a fifth of a second. NitrOS-9's DriveWire driver waits
+for ever for an answer, so a request to a FujiNet that is not there would
+stop the system.
+\rh{Restrictions}
+The terminal must be at least 80 columns wide and 20 rows high, and show
+xterm's 256 colors and the Unicode block characters, as the terminals of
+macOS and Linux do.
+\rh{Files}
+\begin{keys}[2.05in]
+\file{nitros9-l2/splash/splash.c} & The source. \type{make
+build/splash-host} builds it for the computer the tether runs on, with
+made-up values, to look at.\\
+\file{nitros9-l2/splash/art.py} & Draws the picture, pixels two to a
+character, and writes it as \file{art.h}.\\
+\end{keys}
+\rh{See Also} \rp{info}{1}, \rp{tsh}{1}, \rp{fujinet}{4}
+\end{refpage}
+
 \refentry{tsh}{1}{the shell, with line editing}
 \begin{refpage}
 \rh{Name} \cmd{tsh} -- the shell, with line editing, history, completion,
@@ -2303,7 +2356,7 @@ OS9:\textbf{PROMPT="\%d: "}
 prompt, aliases.\\
 \file{/DD/SYS/tsh\_history} & The history.\\
 \file{/DD/startup} & Ends with \type{tsh </term}, to start it after
-booting.\\
+booting (after \rp{splash}{1}).\\
 \file{nitros9-l2/tsh/tsh.c} & The source. \type{make build/tsh-host}
 builds it for the computer the tether runs on, where commands go to
 \file{/bin/sh}, for testing.\\
@@ -2937,7 +2990,9 @@ $ \textbf{make stories STORIES="~/if/zork1.z3 ~/if/hhgg.z3" DISK=level2.dsk}
 \file{fujinet/} & The DriveWire modules and the \cmd{fn} commands.\\
 \file{games/} & The C programs: \cmd{tetris}, \cmd{zm}, \cmd{vi}, \cmd{info}.\\
 \file{tsh/} & \cmd{tsh}, and its \file{tshrc}.\\
-\file{startup} & The \file{startup} of a new disk; it starts \cmd{tsh}.
+\file{splash/} & \cmd{splash}, and \file{art.py}, which draws its picture.\\
+\file{startup} & The \file{startup} of a new disk; it runs \cmd{splash}
+and starts \cmd{tsh}.
 \texttt{make install} leaves a disk's own \file{startup} alone.\\
 \file{helpmsg.unix} & The \cmd{man} pages for what was added.\\
 \file{doc/manual.tex} & This manual.\\
