@@ -1,0 +1,24 @@
+{ CREDITS                          11/11 }
+ SYN-ACK WIRE
+
+ Concept, Direction, Testing
+   Michael Sternberg
+
+ The rules are Sid Sackson's
+ ACQUIRE (1964), rethemed.
+
+ TFR/911H version
+   the tfr/9 project
+
+ Made with and for
+   FujiNet     fujinet.online
+   fujinet-lib the FujiNet team
+   CMOC        Pierre Sarrazin
+   NitrOS-9    the NitrOS-9 Project
+
+ Free software, GPL-3.0:
+ github.com/michaelsternberg/
+   syn-ack-wire
+
+
+{<- PREV         ESC:EXIT                }

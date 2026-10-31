@@ -157,6 +157,7 @@ makes the FujiNet open the new one.
 | `fnstocks` | Ten stocks and a ticker, from Finnhub (FujiNetWIFI/fujinet-stocks) |
 | `fnbounce` | Bounce World: shapes bouncing across many computers' screens (markjfisher/bounce-world-client) |
 | `fnbattleship` | Fuji Battleship: sea battle for up to four players, in color and with sound (FujiNetWIFI/fujinet-battleship) |
+| `synack` | SYN-ACK WIRE: hacking and crypto for 2-6 netrunners, after Acquire (dillera/syn-ack-wire) |
 
 Slots are numbered from 0 here (device slot 0 is `/X0`), as the FujiNet
 numbers them on the wire.
@@ -238,10 +239,34 @@ runs out, the client asks the server at once (upstream waited out the
 time again, over and over, while the server had moved for it).  It brings its own
 graphics characters to `c/term.c` (`term_glyphs()`).
 
+`synack/` is SYN-ACK WIRE, Michael Sternberg's network game of hacking
+and crypto after Sid Sackson's *Acquire*, from
+[dillera/syn-ack-wire](https://github.com/dillera/syn-ack-wire) (commit
+445c0c9; upstream michaelsternberg/syn-ack-wire), whose server runs the
+game and whose small clients only draw it.  The client's portable code,
+`src/common` (the game state, the protocol, the main loop), is here as
+it is, with the headers its tools generate from the theme and the
+protocol; `src/os9` is the TFR/911H's: the network through fujinet-lib
+(the CoCo's calls), keys and NitrOS-9's clock (`D.Sec`, `D.Tick`, read
+with `F$CpyMem`), the Atari's chords on the SN76489, and a screen of its
+own for an 80 by 24 terminal in xterm's 256 colours: the Grid on a dark
+ground with each syndicate in its colour, bars for the hives' sizes, the
+log's lines coloured by kind, and the Atari's title logo, its columns
+doubled, with TV static crawling in its letters (`src/os9/title.py`
+writes `title.h`).  Everything drawn goes through `src/os9/screen.c`,
+which sends a colour only when it changes and erases rows with the
+terminal's erase rather than spaces, since the console takes about 4K a
+second: joining a game draws some 4K.  The instructions are the MS-DOS
+client's pages, with the TFR's keys, in `SYS/synack.hlp`.  It dials
+`syn-ack-wire.fly.dev:6502`; `SYNACK_URL=N:TCP://host:port/` builds one
+for another server (`server/serve.py` in the upstream repository).
+
 For trying a change without the board, `make build/fnnews-host`,
 `make build/fnstocks-host`, `make build/fnweather-host`,
-`make build/fnbattleship-host` and `make build/fnbounce-host` build them for
-this computer, with `c/host/fujinet-host.c` (curl, python3, and a socket
+`make build/fnbattleship-host`, `make build/fnbounce-host` and
+`make build/synack-host` build them for this computer (and
+`build/synack-auto` plays SYN-ACK WIRE by itself, with upstream's
+`test/autoplay.c`), with `c/host/fujinet-host.c` (curl, python3, and a socket
 for TCP) as the FujiNet; `fnbounce` is compiled as for CMOC, with
 `bounce/host/`'s stand-ins for CMOC's headers.  App keys are files in
 `$FN_APPKEYS`.

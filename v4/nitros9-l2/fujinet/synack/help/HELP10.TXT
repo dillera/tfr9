@@ -1,0 +1,24 @@
+{ ON THE TFR/911H                  10/11 }
+
+ This is the NitrOS-9 version, for the
+ TFR/911H and its FujiNet: 80 columns,
+ in colour, on the tether's terminal.
+
+ It dials the public server,
+   SYN-ACK-WIRE.FLY.DEV, port 6502,
+ through the FujiNet, unless the
+ FujiNet game lobby chose another.
+
+ Bots fill the empty seats. Netrunners
+ on Ataris, CoCos, PCs and the rest
+ can sit at the same table.
+
+ The sound is the TFR/911H's SN76489.
+
+ The rulebook and the manuals:
+   GITHUB.COM/MICHAELSTERNBERG/
+     SYN-ACK-WIRE
+
+
+
+{<- PREV         ESC:EXIT         NEXT ->}

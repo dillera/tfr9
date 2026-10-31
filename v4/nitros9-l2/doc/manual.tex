@@ -23,7 +23,7 @@
 
 % The manual's version: change it, and add a line to the revision history
 % on the copyright page, with each revision.
-\newcommand{\docversion}{1.5}
+\newcommand{\docversion}{1.6}
 \newcommand{\docdate}{30 October 2026}
 
 \usepackage[hidelinks,pdftitle={TFR Manual and Reference, Version \docversion},
@@ -204,7 +204,7 @@ Level 2 as they run on the board.
 \begin{tabular}{@{}l l@{}}
 \bfseries Order Number: & TFR-911H-MR\\[3pt]
 \bfseries Version: & \docversion, \docdate\\[3pt]
-\bfseries Revision/Update Information: & Version \docversion: \cmd{splash}, the boot screen.\\[3pt]
+\bfseries Revision/Update Information: & Version \docversion: \cmd{synack}, SYN-ACK WIRE.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
 \end{tabular}\par}
@@ -233,6 +233,8 @@ completion, and a search path; the firmware no longer loses a byte of a
 packet with 254 bytes that are not zero before a zero.\\
 1.5 & 30 Oct 2026 & \cmd{splash}, the boot screen: TFR and FujiNet in big
 letters, in color, and the system at a glance.\\
+1.6 & 30 Oct 2026 & \cmd{synack}: SYN-ACK WIRE, a game of hacking and
+crypto for two to six, through the FujiNet.\\
 \end{tabular}
 
 The information in this document is subject to change without notice and
@@ -536,6 +538,7 @@ and a search path\\
 \rp{fnstocks}{1} & Ten stocks, with a ticker\\
 \rp{fnbounce}{1} & Bounce World: shapes that bounce across many computers' screens\\
 \rp{fnbattleship}{1} & Fuji Battleship: sea battle for up to four players\\
+\rp{synack}{1} & SYN-ACK WIRE: hacking and crypto for two to six netrunners\\
 \rp{fujinet}{4} & The FujiNet: its wiring, its disks, and booting from it\\
 \rp{tfr911h}{4} & The hardware the firmware emulates\\
 \rp{sn76489}{4} & Programming the sound chip\\
@@ -1597,6 +1600,7 @@ grep(1) & Print lines that contain a string\\
 info(1) & Show what the system and the hardware know about themselves\\
 pwd(1) & Print the data or execution directory\\
 splash(1) & The boot screen: TFR and FujiNet in big letters, and the system\\
+synack(1) & SYN-ACK WIRE, through the FujiNet\\
 tsh(1) & The shell: line editing, history, completion, and a search path\\
 unix(1) & Unix-style names for OS-9 commands: \textmd{ls, cd, cat, cp, mv, rm, ps, df,} \ldots\\
 vi(1) & A small vi, also called \textmd{vim}\\
@@ -2185,6 +2189,45 @@ made-up values, to look at.\\
 character, and writes it as \file{art.h}.\\
 \end{keys}
 \rh{See Also} \rp{info}{1}, \rp{tsh}{1}, \rp{fujinet}{4}
+\end{refpage}
+
+\refentry{synack}{1}{SYN-ACK WIRE}
+\begin{refpage}
+\rh{Name} \cmd{synack} -- SYN-ACK WIRE, through the FujiNet
+\rh{Syntax} \cmd{synack}
+\rh{Description}
+SYN-ACK WIRE is Michael Sternberg's game of hacking and crypto for two to
+six netrunners, after Sid Sackson's \emph{Acquire}. Netrunners spike
+nodes on the Grid; two that touch make a hive, which a crime syndicate
+takes over; hives spread, and a bigger one hivejacks a smaller, paying
+the smaller one's two biggest holders of its crypto. Whoever holds the
+most new yen when the region is null-routed wins. The server runs the
+game and plays bots in the empty seats; \cmd{synack} is its client for
+the TFR/911H, at the same tables as the Atari, CoCo, MS-DOS and other
+clients.
+
+The title, with TV static crawling in its letters, shows the region and
+what the table there is doing. Type a handle (your FujiNet lobby name
+starts it, if you have one) and press \key{Enter}. The first netrunner
+at a table picks how many seats it has. The screen then shows the Grid,
+the hives with a bar for each one's size, the netrunners' new yen and
+crypto, the log, and the question; each syndicate has its own color.
+\rh{Keys}
+\begin{keys}[1in]
+\key{1}--\key{6} & Run that exploit from the kit (the Grid shows where).\\
+A letter & Pick a syndicate, or buy one of its crypto; \key{Backspace} takes one back, \key{Enter} buys.\\
+\key{Y}, \key{N} & Call the null-route, or not.\\
+\key{Tab} & Move hints on or off.\\
+\key{Ctrl}-\key{S} & Sound on or off (the SN76489).\\
+\key{?} & The instructions; \key{<} \key{>} or the arrows turn the pages.\\
+\key{Esc} & Log off (the seat goes to a bot), or on the title, quit.\\
+\end{keys}
+\rh{Files}
+\begin{keys}[2.05in]
+\file{/DD/SYS/synack.hlp} & The instructions.\\
+\file{nitros9-l2/fujinet/synack/} & The source: upstream's \file{src/common}, and \file{src/os9}.\\
+\end{keys}
+\rh{See Also} \rp{fnbattleship}{1}, \rp{fujinet}{4}, \rp{sn76489}{4}
 \end{refpage}
 
 \refentry{tsh}{1}{the shell, with line editing}

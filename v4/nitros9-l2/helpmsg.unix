@@ -155,6 +155,7 @@ is /X0 (the FujiNet's slot 1).  Host slot 1 is often its SD card.
   fnnews           the news, from the FujiNet news server
   fnstocks         a stock ticker, from Finnhub
   fnbounce         Bounce World, shapes shared with other computers
+  synack           SYN-ACK WIRE: hacking and crypto, for 2-6 players
   fnstatus         firmware version, WiFi network and IP settings
   fnlisthosts      the eight host slots
   fngethost  <host_slot>            show one host slot
@@ -205,6 +206,15 @@ Usage : Fuji Battleship: sea battle for up to four players, people or
         At a table Space is ready; placing ships, arrows move, R turns
         and Space places; on your turn, arrows or a letter A-J and a
         digit 1-0 aim and Space fires.  Esc is the menu (Q leaves).
+@SYNACK
+Syntax: synack
+Usage : SYN-ACK WIRE: a cyberpunk game of hacking and crypto (Sid
+        Sackson's Acquire) for 2-6 netrunners, people or bots, at a
+        table on syn-ack-wire.fly.dev, through the FujiNet.  Type a
+        handle and Enter; the first at a table picks its seats.  1-6
+        runs an exploit; letters pick or buy a syndicate's crypto;
+        Backspace, Enter; Tab move hints; ^S sound; ? the
+        instructions (< > turn the pages); Esc logs off, or quits.
 @FNBOUNCE
 Syntax: fnbounce
 Usage : Bounce World: shapes bouncing across the screens of all the

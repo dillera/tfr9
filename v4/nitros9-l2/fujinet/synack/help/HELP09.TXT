@@ -1,0 +1,24 @@
+{ THE SCREEN AND KEYS               9/11 }
+
+ .     empty node
+ +     lone spike
+ {G}     hive (syndicate letter)
+ 1-6   where that exploit can run
+
+ Last move: its node blinks a moment
+
+> = you   lit row = whose turn
+* = bot   ? = away
+
+ 1-6          run an exploit
+ A-Z          pick a syndicate / buy one
+ BACKSPACE    undo a buy
+ ENTER        confirm
+ Y / N        call the null-route?
+ TAB          toggle on-screen hints
+ CTRL-S       toggle sound
+ ?            view help at any time
+ < > ARROWS   turn these pages
+ ESC          leave game / quit to OS-9
+
+{<- PREV         ESC:EXIT         NEXT ->}

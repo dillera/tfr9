@@ -1,0 +1,24 @@
+{ BLACK ICE AND THE END             5/11 }
+
+BLACK ICE: a hive of 11+ nodes is now 
+safe and can't be absorbed. It can still
+absorb. An exploit that would join two
+Black ICE hives is patched out.
+
+If nothing in your exploit kit can run,
+the system burns the kit: 6 new ones.
+
+ENDING: after your spike you may call
+a null-route if
+ - a hive has 41+ nodes, or
+ - every hive is Black ICE.
+
+FINAL CASH OUT: ROOT and SUDO are paid
+for every hive, and all crypto is
+sold. Flatlined crypto is worth nothing.
+
+If nobody can run an exploit for a
+whole round, the game ends at once.
+
+
+{<- PREV         ESC:EXIT         NEXT ->}

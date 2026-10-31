@@ -25,7 +25,7 @@ GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/in
 # asks the FujiNet for its address.
 FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
 FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks build/fn/fnbounce \
-  build/fn/fnweather build/fn/fnbattleship build/fn/splash)
+  build/fn/fnweather build/fn/fnbattleship build/fn/synack build/fn/splash)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -43,7 +43,8 @@ $B/tfr911-level2.dsk: $B/Makefile FORCE
 	$(MAKE) -C $B
 $B/tfr911-level2-fn.t35 $B/tfr911-level2-fn.o9b: $B/tfr911-level2.dsk
 
-build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup tsh/tshrc build/grep build/helpmsg $(GAMES) $(FN_CMDS) $(FN_APPS)
+build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup tsh/tshrc build/grep build/helpmsg $(GAMES) $(FN_CMDS) $(FN_APPS) \
+  build/fn/synack.hlp
 	cp -f $< $@
 	$(OS9_TOOL) copy -l -r startup $@,startup
 	$(OS9_TOOL) attr -q -r -w -pr $@,startup
@@ -59,6 +60,7 @@ build/tfr911-level2.dsk: $B/tfr911-level2.dsk startup tsh/tshrc build/grep build
 	$(OS9_TOOL) copy -l -r $(NITROS9_DIR)/level1/sys/errmsg $@,SYS/errmsg
 	$(OS9_TOOL) copy -l -r build/helpmsg $@,SYS/helpmsg
 	$(OS9_TOOL) copy -l -r tsh/tshrc $@,SYS/tshrc
+	$(OS9_TOOL) copy -l -r build/fn/synack.hlp $@,SYS/synack.hlp
 	if ! $(OS9_TOOL) dir $@,CMDS | grep -qw basic09 && test -f $(B09DSK); then \
 	  for f in basic09_6809:basic09 runb_6809:runb inkey:inkey syscall:syscall; do \
 	    $(OS9_TOOL) copy -r $(B09DSK),CMDS/$${f%%:*} $@,CMDS/$${f##*:} && \
@@ -205,6 +207,30 @@ build/fn/fnbattleship: $(BATTLESHIP_OBJS) $(FN_C_OBJS) $(FNLIB_A)
 	cd build/fn && $(CMOC) --os9 -o fnbattleship \
 	  $(patsubst build/fn/%,%,$(BATTLESHIP_OBJS) $(FN_C_OBJS)) -L../fnlib -lfujinet
 
+# synack: SYN-ACK WIRE, the client of dillera/syn-ack-wire (commit
+# SYNACK_VERSION; michaelsternberg's game), with an os9 platform: its
+# portable code (src/common) as it is, and the TFR/911H's screen, keys,
+# sound and network in src/os9.  The instructions go in SYS/synack.hlp.
+SYNACK = fujinet/synack
+SYNACK_VERSION = 445c0c9
+SYNACK_SRC = $(SYNACK)/src/common/main.c $(SYNACK)/src/common/game.c $(SYNACK)/src/common/proto.c \
+  $(wildcard $(SYNACK)/src/os9/*.c)
+SYNACK_OBJS = $(patsubst $(SYNACK)/src/%.c,build/fn/saw/%.o,$(SYNACK_SRC))
+SYNACK_DEFS = -D__fastcall__= -DDISPLAY_IDLE=1 -DTITLE_IDLE=1 -DQUIT_TO_OS=1 \
+  '-DQUIT_ASK="QUIT TO OS-9? Y/N"' $(if $(SYNACK_URL),'-DURL="$(SYNACK_URL)"')
+SYNACK_HDRS = $(wildcard $(SYNACK)/src/*.h $(SYNACK)/src/common/*.h $(SYNACK)/src/os9/*.h $(FN_C)/*.h)
+build/fn/saw/%.o: $(SYNACK)/src/%.c $(SYNACK_HDRS)
+	mkdir -p $(dir $@)
+	$(CMOC) $(FN_CFLAGS) -I$(SYNACK)/src/os9/include $(SYNACK_DEFS) -c -o $@ $<
+build/fn/synack: $(SYNACK_OBJS) $(FN_C_OBJS) $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o synack $(patsubst build/fn/%,%,$(SYNACK_OBJS) $(FN_C_OBJS)) \
+	  -L../fnlib -lfujinet
+$(SYNACK)/src/os9/title.h: $(SYNACK)/src/os9/title.py $(SYNACK)/src/atari/title4.atascii
+	python3 $(SYNACK)/src/os9/title.py $(SYNACK)/src/atari/title4.atascii > $@
+build/fn/synack.hlp: $(sort $(wildcard $(SYNACK)/help/HELP*.TXT))
+	mkdir -p build/fn
+	for f in $^; do awk '{ print } END { for (i = NR; i < 24; i++) print "" }' $$f; done > $@
+
 # splash: the boot screen.  Its picture, splash/art.h, is made by
 # splash/art.py.  build/splash-host shows it here, with made-up values.
 splash/art.h: splash/art.py
@@ -251,6 +277,20 @@ build/fnbounce-host: $(wildcard $(BOUNCE)/src/*.c $(BOUNCE)/src/*/*.[ch] \
 	$(CC) -O2 -I$(FN_C) -I$(FN_HOST) -o $@ build/bounce-host/*.o $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
 
 # fnbattleship for this computer, for testing against the server.
+# SYN-ACK WIRE here, against a server over TCP: build/synack-host, with
+# SYNACK_HLP naming the instructions (build/fn/synack.hlp).
+# make build/synack-host SYNACK_URL=N:TCP://localhost:6502/ for your own.
+build/synack-host: $(SYNACK_SRC) $(SYNACK_HDRS) $(FN_C)/term.c $(FN_HOST)/fujinet-host.c build/fn/synack.hlp
+	mkdir -p build
+	$(CC) -O2 -w $(SYNACK_DEFS) -I$(FN_C) -I$(FN_HOST) -o $@ $(SYNACK_SRC) \
+	  $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
+# ...and playing by itself (the upstream test/autoplay.c), for testing.
+build/synack-auto: $(SYNACK_SRC) $(SYNACK_HDRS) $(SYNACK)/test/autoplay.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
+	mkdir -p build
+	$(CC) -O2 -w $(SYNACK_DEFS) -DAUTOPLAY -DDUMP_TICKS=0 '-DAUTO_HANDLE="$(or $(AUTO_HANDLE),TFR)"' \
+	  -I$(FN_C) -I$(FN_HOST) -o $@ $(SYNACK_SRC) $(SYNACK)/test/autoplay.c \
+	  $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
+
 build/fnbattleship-host: $(wildcard $(BATTLESHIP)/src/*.[ch] $(BATTLESHIP)/src/*/*.[ch] \
     $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
 	mkdir -p build

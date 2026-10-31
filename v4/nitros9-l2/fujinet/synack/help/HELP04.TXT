@@ -1,0 +1,24 @@
+{ HIVEJACKS                         4/11 }
+
+The bigger hive is the absorber. Same
+size? The netrunner who spiked picks.
+
+ Bonuses for the absorbed syndicate:
+ ROOT = biggest holder 10 x crypto value
+ SUDO = 2nd biggest     5 x crypto value
+
+Tied ROOTs share both. A sole holder
+takes both.
+
+Then each holder chooses, in any mix:
+{ }{CASH OUT}     sell at the absorbed price
+{ }{SWAP}         2 absorbed for 1 absorber
+{ }{HODL}         keep it. It's flatlined
+              (worthless) until that
+              syndicate gets a new hive.
+
+Prices and bonuses use the absorbed
+hive's size just before the hivejack.
+
+
+{<- PREV         ESC:EXIT         NEXT ->}

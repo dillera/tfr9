@@ -1,0 +1,24 @@
+{ HOW TO PLAY                       1/11 }
+
+Crime syndicates want control of the 
+region's network and reward netrunners
+like you to gain access.
+
+Compromise a network node using your
+exploit kit. Compromise two adjacent
+nodes to create a botnet hive. Sell it
+to a syndicate for one of their crypto.
+
+Hives spread and merge. Larger hives
+hivejack smaller ones. The smaller
+hive's top two crypto backers make bank.
+
+But you know the real \\\ is dealing in
+the crypto market and playing syndicates
+against each other. That is, until a
+null-route ends the gig.
+
+Turn pages with < > or the arrow keys.
+ESC goes back to the title.
+
+{                ESC:EXIT         NEXT ->}

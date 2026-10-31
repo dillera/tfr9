@@ -44,6 +44,8 @@ static uint8_t tcp_open(const char *hostport) {
     char host[256], *colon;
     struct addrinfo hints, *ai, *a;
     snprintf(host, sizeof host, "%s", hostport);
+    if (*host && host[strlen(host) - 1] == '/')     // "TCP://host:port/"
+        host[strlen(host) - 1] = 0;
     colon = strrchr(host, ':');
     if (!colon) return FN_ERR_BAD_CMD;
     *colon = 0;

@@ -1,0 +1,24 @@
+{ THE GAME AND YOUR TURN            2/11 }
+  ABCDEFGHIJKL 
+0 ..+......... Spiked node at C0
+1 ............
+2 ....++..+... 2 spiked nodes create a
+3 ........+... new hive infiltration
+4 .........{L}{L}{L}
+5 ........{L}{L}.{L} A hive controlled by 
+6 .1.....4.... syndicate {L} (Lotus-12)
+7 ....2....... 
+8 .3.....5..6. The 6 exploits in
+               your kit.
+Exploit kit:
+ 1:B6 2:E7 3:B8 4:H6 5:H8 6:K8
+
+EVERY TURN:
+ 1. Spike a node: press 1-6 to netrun
+    the corresponding exploit.
+ 2. Buy up to 3 crypto (optional),
+    from syndicates with a hive.
+ 3. Draw a new exploit (automatic).
+
+NOTE: 60 secs or your bot moves for you.
+{<- PREV         ESC:EXIT         NEXT ->}

@@ -1,0 +1,24 @@
+{ WHAT YOUR SPIKE DOES              3/11 }
+
+{NOTHING}       Touches nothing. It just
+              sits there.
+
+{INFILTRATION}  Touches lone spikes only.
+              A new hive! Broker it to
+              a syndicate with no hive
+              and take 1 free crypto.
+              Opening spikes never form
+              one, even if they touch.
+
+{SPREAD}        Touches a hive, growing
+              it and its crypto's value.
+
+{HIVEJACK}      Touches 2+ hives. The
+              biggest absorbs the rest.
+              See the next page.
+
+Only 7 hives fit. An exploit that would
+found an 8th can't run yet. It shows
+inverse in your exploit kit.
+
+{<- PREV         ESC:EXIT         NEXT ->}

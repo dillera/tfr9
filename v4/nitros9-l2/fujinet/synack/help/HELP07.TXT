@@ -1,0 +1,24 @@
+{ THE SYNDICATES                    7/11 }
+
+{G} {GHOSTMDM} - GHOST//MODEM
+  Old-school phreakers
+
+{R} {RATKING}  - Rat King Cartel
+  Underground Data Smugglers
+
+{H} {DAEMON}   - Church of the Holy Daemon
+  Fanatical devotees of the init process
+
+{I} {IRONVEC}  - Iron Vector
+  Paramilitary arms brokers
+
+{B} {BRATVA}   - Bratva 404
+  Eastern-bloc mob
+
+{L} {LOTUS-12} - Lotus-12 Triad
+  Hong Kong triad
+
+{O} {OBSIDIAN} - Obsidian Ledger
+  Cabal of former central bankers
+
+{<- PREV         ESC:EXIT         NEXT ->}
