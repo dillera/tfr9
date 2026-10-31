@@ -25,7 +25,7 @@ GAMES = $(if $(shell command -v $(CMOC)),build/tetris build/zm build/vi build/in
 # asks the FujiNet for its address.
 FN_CMDS = $(patsubst fujinet/cmds/%.as,build/fn/%,$(wildcard fujinet/cmds/*.as))
 FN_APPS = $(if $(shell command -v $(CMOC)),build/fn/fnnews build/fn/fnstocks build/fn/fnbounce \
-  build/fn/fnweather build/fn/fnbattleship build/fn/synack build/fn/splash)
+  build/fn/fnweather build/fn/fnbattleship build/fn/fnholdem build/fn/synack build/fn/splash)
 # Z-machine story files to put in /DD/GAMES, e.g. STORIES="~/if/*.z3".
 STORIES ?=
 
@@ -207,6 +207,28 @@ build/fn/fnbattleship: $(BATTLESHIP_OBJS) $(FN_C_OBJS) $(FNLIB_A)
 	cd build/fn && $(CMOC) --os9 -o fnbattleship \
 	  $(patsubst build/fn/%,%,$(BATTLESHIP_OBJS) $(FN_C_OBJS)) -L../fnlib -lfujinet
 
+# fnholdem: fujinet-texasHoldEm's C client (commit HOLDEM_VERSION): its
+# common code, with an os9 platform beside the CoCo's, which draws the
+# table in 80 columns and 256 colours through a copy of the screen, and
+# sends only what changed.  src/os9/title.h is made by src/os9/title.py.
+HOLDEM = fujinet/holdem
+HOLDEM_VERSION = d272cff
+HOLDEM_OBJS = $(patsubst $(HOLDEM)/src/%.c,build/fn/holdem/%.o,\
+  $(wildcard $(HOLDEM)/src/*.c $(HOLDEM)/src/os9/*.c))
+build/fn/holdem/%.o: $(HOLDEM)/src/%.c \
+    $(wildcard $(HOLDEM)/src/*.h $(HOLDEM)/src/*/*.h $(FN_C)/*.h) $(HOLDEM)/src/os9/title.h
+	mkdir -p $(dir $@)
+	$(CMOC) $(FN_CFLAGS) -c -o $@ $<
+HOLDEM_VERSION_O = build/fn/holdem/os9/version.o
+$(HOLDEM_VERSION_O): $(filter-out $(HOLDEM_VERSION_O),$(HOLDEM_OBJS)) $(FN_C_OBJS) $(FNLIB_A)
+$(HOLDEM_VERSION_O): FN_CFLAGS += '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
+  '-DUPSTREAM_VERSION="$(HOLDEM_VERSION)"'
+build/fn/fnholdem: $(HOLDEM_OBJS) $(FN_C_OBJS) $(FNLIB_A)
+	cd build/fn && $(CMOC) --os9 -o fnholdem \
+	  $(patsubst build/fn/%,%,$(HOLDEM_OBJS) $(FN_C_OBJS)) -L../fnlib -lfujinet
+$(HOLDEM)/src/os9/title.h: $(HOLDEM)/src/os9/title.py $(HOLDEM)/src/os9/glyphs.h
+	python3 $(HOLDEM)/src/os9/title.py > $@
+
 # synack: SYN-ACK WIRE, the client of dillera/syn-ack-wire (commit
 # SYNACK_VERSION; michaelsternberg's game), with an os9 platform: its
 # portable code (src/common) as it is, and the TFR/911H's screen, keys,
@@ -297,6 +319,20 @@ build/fnbattleship-host: $(wildcard $(BATTLESHIP)/src/*.[ch] $(BATTLESHIP)/src/*
 	$(CC) -O2 -w -DBUILD_OS9 '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
 	  '-DUPSTREAM_VERSION="$(BATTLESHIP_VERSION)"' -I$(FN_C) -I$(FN_HOST) -o $@ \
 	  $(BATTLESHIP)/src/*.c $(BATTLESHIP)/src/os9/*.c $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
+
+# fnholdem for this computer, for testing against the server: compiled as
+# for CMOC, with fujinet/holdem/host's cmoc.h and the rest, so that it
+# takes the same paths; term.c's Unix side, and fujinet-host.c's curl.
+HOLDEM_HOST = $(HOLDEM)/host
+build/fnholdem-host: $(wildcard $(HOLDEM)/src/*.[ch] $(HOLDEM)/src/*/*.[ch] \
+    $(HOLDEM_HOST)/*.h $(FN_C)/*.[ch] $(FN_HOST)/*.[ch])
+	mkdir -p build/holdem-host
+	for f in $(HOLDEM)/src/*.c $(HOLDEM)/src/os9/*.c; do \
+	  $(CC) -O2 -w -D_CMOC_VERSION_ -DBUILD_OS9 -DFNHOLDEM_HOST -DHOST_UI_TEST '-DBUILD_DATE="$(shell date +%Y-%m-%d)"' \
+	    '-DUPSTREAM_VERSION="$(HOLDEM_VERSION)"' -I$(HOLDEM_HOST) -I$(FN_HOST) -I$(FN_C) \
+	    -c -o build/holdem-host/$$(echo $$f | tr / _).o $$f || exit 1; \
+	done
+	$(CC) -O2 -I$(FN_C) -I$(FN_HOST) -o $@ build/holdem-host/*.o $(FN_C)/term.c $(FN_HOST)/fujinet-host.c
 
 build/tetris: games/tetris.c
 	mkdir -p build

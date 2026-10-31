@@ -157,6 +157,7 @@ makes the FujiNet open the new one.
 | `fnstocks` | Ten stocks and a ticker, from Finnhub (FujiNetWIFI/fujinet-stocks) |
 | `fnbounce` | Bounce World: shapes bouncing across many computers' screens (markjfisher/bounce-world-client) |
 | `fnbattleship` | Fuji Battleship: sea battle for up to four players, in color and with sound (FujiNetWIFI/fujinet-battleship) |
+| `fnholdem` | Texas Hold'em for up to eight players, people or bots, on a felt table in 256 colours (fujinet-texasHoldEm) |
 | `synack` | SYN-ACK WIRE: hacking and crypto for 2-6 netrunners, after Acquire (dillera/syn-ack-wire) |
 
 Slots are numbered from 0 here (device slot 0 is `/X0`), as the FujiNet
@@ -168,8 +169,8 @@ the tether's terminal, which should be at least 80 by 24.
 
 ## Programs in C
 
-`fnnews`, `fnstocks`, `fnbounce`, `fnweather` and `fnbattleship` are the
-CoCo versions of five FujiNet programs, written in C against fujinet-lib, the FujiNet's C
+`fnnews`, `fnstocks`, `fnbounce`, `fnweather`, `fnbattleship` and
+`fnholdem` are the CoCo versions of six FujiNet programs, written in C against fujinet-lib, the FujiNet's C
 library, and compiled with CMOC, which can compile for OS-9.
 
 * `fujinet-lib/` is fujinet-lib for NitrOS-9: FujiNetWIFI/fujinet-lib
@@ -239,6 +240,32 @@ runs out, the client asks the server at once (upstream waited out the
 time again, over and over, while the server had moved for it).  It brings its own
 graphics characters to `c/term.c` (`term_glyphs()`).
 
+`holdem/` is fnholdem, the C client of fujinet-texasHoldEm (commit
+d272cff): Texas Hold'em at th.carr-designs.com, whose server deals and
+knows the rules, so that the client only draws the state it polls for
+and sends back the moves the server offers.  Its common code is here
+with a directory for NitrOS-9, `src/os9`, beside upstream's platforms
+(of `src/coco`, only the two headers the common code takes under CMOC):
+a table for an 80 by 24 terminal in xterm's 256 colours, its felt green
+(C turns it blue or red) inside a wooden rail; a block for each of up to
+eight seats, with the name plate (gold for the player whose move it is,
+and for the winner at the showdown), two cards 5 by 3 with round
+corners, and the chips; the bets toward the middle, where the five
+community cards lie with the street over them and the pot under; the
+moves on the status bar, a gold bar under the one chosen and the keys
+below; sounds on the SN76489; and a title in big half-block letters
+over a fanned royal flush (`src/os9/title.py` writes `title.h`).
+Everything drawn goes through `src/os9/screen.c`, a copy of the screen
+with two colours a cell: upstream draws the whole table every time the
+state comes in, and only the cells that changed are sent, a colour only
+when it changes and the ends of rows erased by the terminal, so a poll
+that changes nothing sends nothing.  The title is about 4K, and the
+welcome screen after it, which keeps the letters, a few hundred bytes.
+Of the game's own files, a few lines changed (`BUILD_OS9`):
+`platform-specific/input.h` takes `src/os9/vars.h` rather than the
+CoCo's, `main.c` shows the title, `gamelogic.c` leaves its table for 32
+and 40 columns to `src/os9/table.c`, and how to play lists the keys.
+
 `synack/` is SYN-ACK WIRE, Michael Sternberg's network game of hacking
 and crypto after Sid Sackson's *Acquire*, from
 [dillera/syn-ack-wire](https://github.com/dillera/syn-ack-wire) (commit
@@ -263,12 +290,13 @@ for another server (`server/serve.py` in the upstream repository).
 
 For trying a change without the board, `make build/fnnews-host`,
 `make build/fnstocks-host`, `make build/fnweather-host`,
-`make build/fnbattleship-host`, `make build/fnbounce-host` and
-`make build/synack-host` build them for this computer (and
+`make build/fnbattleship-host`, `make build/fnholdem-host`,
+`make build/fnbounce-host` and `make build/synack-host` build them for this computer (and
 `build/synack-auto` plays SYN-ACK WIRE by itself, with upstream's
 `test/autoplay.c`), with `c/host/fujinet-host.c` (curl, python3, and a socket
-for TCP) as the FujiNet; `fnbounce` is compiled as for CMOC, with
-`bounce/host/`'s stand-ins for CMOC's headers.  App keys are files in
+for TCP) as the FujiNet; `fnbounce` and `fnholdem` are compiled as for
+CMOC, with `bounce/host/`'s and `holdem/host/`'s stand-ins for CMOC's
+headers.  App keys are files in
 `$FN_APPKEYS`.
 
 ## How it works
@@ -309,8 +337,8 @@ Some files came from elsewhere and keep their own terms:
 * NitrOS-9's: `modules/dwio.asm`, `modules/scdwv.asm`, `lib/fuji.as`,
   `lib/sys6809l2.as`, `defs/drivewire.d`, `cmds/fngetdevfile.as` and
   `cmds/fnsetdevfile.as`.
-* The programs' own files, from fujinet-news and fujinet-battleship, whose
-  sources say GPL v3, and from fujinet-stocks and
+* The programs' own files, from fujinet-news, fujinet-battleship and
+  fujinet-texasHoldEm, whose sources say GPL v3, and from fujinet-stocks and
   markjfisher/bounce-world-client, which state no license; those remain
   their authors'.
 

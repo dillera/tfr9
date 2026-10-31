@@ -1,0 +1,38 @@
+/*
+  Platform specific input.
+*/
+#ifndef INPUT_H
+#define INPUT_H
+
+// Include platform specific defines before the input include
+#ifdef BUILD_OS9
+// NitrOS-9 is compiled by CMOC too, so it must not take the CoCo's
+#include "../os9/vars.h"
+#else
+#include "../c64/vars.h"
+#include "../apple2/vars.h"
+#include "../adam/vars.h"
+#include "../coco/vars.h"
+#include "../msdos/vars.h"
+#include "../plus4/vars.h"
+#include "../msx/vars.h"
+#include "../coleco/vars.h"
+#include "../nes/vars.h"
+#endif /* BUILD_OS9 */
+
+// Platform specific implementations
+unsigned char readJoystick();
+
+#ifdef USE_PLATFORM_SPECIFIC_INPUT
+void initPlatformKeyboardInput(void);
+int getPlatformKey(void);
+#endif
+
+// Platforms with no keyboard at all type on screen instead of through
+// inputFieldCycle(); see src/coleco/osk.c.
+#ifdef USE_PLATFORM_NAME_ENTRY
+void platformNameEntry(unsigned char x, unsigned char y, unsigned char max,
+                       char *buffer);
+#endif
+
+#endif /* INPUT_H */

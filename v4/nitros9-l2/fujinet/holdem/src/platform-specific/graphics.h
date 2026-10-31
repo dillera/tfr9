@@ -1,0 +1,64 @@
+/*
+ Platform specific graphics commands
+*/
+
+#ifndef GRAPHICS_H
+#define GRAPHICS_H
+
+#define PARTIAL_LEFT 1
+#define PARTIAL_RIGHT 2
+#define FULL_CARD 3
+/* OR'd in when this card is all that is left of a hand, so platforms with no
+   double buffer clear the slot the dropped card used to occupy. */
+#define CARD_CLEAR_NEXT 4
+
+#ifdef _CMOC_VERSION_
+#include "../coco/coco_bool.h"
+#else
+#include <stdint.h>
+#include <stdbool.h>
+#endif /* _CMOC_VERSION_  */
+#include "../misc.h"
+
+extern bool always_render_full_cards;
+
+void enableDoubleBuffer();
+void disableDoubleBuffer();
+void drawBuffer();
+
+// Call to clear the screen to an empty table
+void resetScreen();
+
+void clearStatusBar();
+void drawStatusTextAt(unsigned char x, const char* s);
+void drawStatusText(const char* s);
+void drawStatusTimer();
+
+
+// For optional HI-RES Y enabled platforms
+void drawTextAt(unsigned char x, unsigned char y, const char* s);
+
+void drawText(unsigned char x, unsigned char y, const char* s);
+void drawCard(unsigned char x, unsigned char y, unsigned char partial, const char* s, unsigned char isHidden);
+void drawChip(unsigned char x, unsigned char y);
+void drawBlank(unsigned char x, unsigned char y);
+void drawLine(unsigned char x, unsigned char y, unsigned char w);
+void hideLine(unsigned char x, unsigned char y, unsigned char w);
+void drawBox(unsigned char x, unsigned char y, unsigned char w, unsigned char h);
+void drawBorder();
+void drawLogo();
+
+void initGraphics();
+void resetGraphics();
+void waitvsync();
+
+uint8_t cycleNextColor();
+void setColorMode();
+extern unsigned char colorMode;
+
+#ifdef BUILD_OS9
+// The title screen NitrOS-9 shows first (src/os9/title.c)
+void showTitleScreen();
+#endif
+
+#endif /* GRAPHICS_H */

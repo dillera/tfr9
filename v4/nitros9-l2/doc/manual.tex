@@ -23,7 +23,7 @@
 
 % The manual's version: change it, and add a line to the revision history
 % on the copyright page, with each revision.
-\newcommand{\docversion}{1.6}
+\newcommand{\docversion}{1.7}
 \newcommand{\docdate}{30 October 2026}
 
 \usepackage[hidelinks,pdftitle={TFR Manual and Reference, Version \docversion},
@@ -204,7 +204,7 @@ Level 2 as they run on the board.
 \begin{tabular}{@{}l l@{}}
 \bfseries Order Number: & TFR-911H-MR\\[3pt]
 \bfseries Version: & \docversion, \docdate\\[3pt]
-\bfseries Revision/Update Information: & Version \docversion: \cmd{synack}, SYN-ACK WIRE.\\[3pt]
+\bfseries Revision/Update Information: & Version \docversion: \cmd{fnholdem}, Texas Hold'em.\\[3pt]
 \bfseries Operating System and Version: & NitrOS-9/6809 Level 2 V3.3.0\\[3pt]
 \bfseries Hardware and Firmware: & TFR/911H, firmware v4\\
 \end{tabular}\par}
@@ -235,6 +235,8 @@ packet with 254 bytes that are not zero before a zero.\\
 letters, in color, and the system at a glance.\\
 1.6 & 30 Oct 2026 & \cmd{synack}: SYN-ACK WIRE, a game of hacking and
 crypto for two to six, through the FujiNet.\\
+1.7 & 30 Oct 2026 & \cmd{fnholdem}: Texas Hold'em for up to eight,
+through the FujiNet, on a felt table in 256 colors.\\
 \end{tabular}
 
 The information in this document is subject to change without notice and
@@ -538,6 +540,7 @@ and a search path\\
 \rp{fnstocks}{1} & Ten stocks, with a ticker\\
 \rp{fnbounce}{1} & Bounce World: shapes that bounce across many computers' screens\\
 \rp{fnbattleship}{1} & Fuji Battleship: sea battle for up to four players\\
+\rp{fnholdem}{1} & Texas Hold'em for up to eight players, people or bots\\
 \rp{synack}{1} & SYN-ACK WIRE: hacking and crypto for two to six netrunners\\
 \rp{fujinet}{4} & The FujiNet: its wiring, its disks, and booting from it\\
 \rp{tfr911h}{4} & The hardware the firmware emulates\\
@@ -611,9 +614,10 @@ adapter, how it is wired to the board and what the firmware makes of it,
 the DriveWire protocol that runs between them, how NitrOS-9 uses it, and
 how to write programs that use it. It ends with a walk through
 \cmd{fnwx}, the first \cmd{fnweather}, a program in assembly that finds
-where you are and shows the weather there, and with five programs in C,
-\cmd{fnnews}, \cmd{fnstocks}, \cmd{fnbounce}, \cmd{fnweather}, and
-\cmd{fnbattleship}, that came from the Color Computer with little change.
+where you are and shows the weather there, and with six programs in C,
+\cmd{fnnews}, \cmd{fnstocks}, \cmd{fnbounce}, \cmd{fnweather},
+\cmd{fnbattleship}, and \cmd{fnholdem}, that came from the Color Computer
+with little change.
 
 \section{The FujiNet}
 
@@ -636,7 +640,8 @@ programs ask the FujiNet to fetch from the network;
 first disk;
 \item commands to manage it, \rp{fujinet}{1} and \rp{fnconfig}{1}, and
 programs that use it: \rp{fnweather}{1}, \rp{fnnews}{1},
-\rp{fnstocks}{1}, \rp{fnbounce}{1}, and \rp{fnbattleship}{1}.
+\rp{fnstocks}{1}, \rp{fnbounce}{1}, \rp{fnbattleship}{1}, and
+\rp{fnholdem}{1}.
 \end{itemize}
 
 \subsection{The hardware}
@@ -1337,13 +1342,14 @@ against \emph{fujinet-lib}, the FujiNet's C library, which has the same
 calls on every computer. Those for the Color Computer are compiled with
 CMOC, which compiles for OS-9 too. \file{fujinet/fujinet-lib}, in
 \file{v4/nitros9-l2}, is fujinet-lib for NitrOS-9, and \file{fujinet/c}
-is a terminal to draw on. With them, five of the Color Computer's
-programs became NitrOS-9 commands, their logic unchanged:
+is a terminal to draw on. With them, six of the Color Computer's
+programs became NitrOS-9 commands, with their logic unchanged:
 \rp{fnnews}{1}, from \texttt{fujinet-news}, \rp{fnstocks}{1}, from
 \texttt{fujinet-stocks}, \rp{fnbounce}{1}, from
 \texttt{bounce-world-client}, \rp{fnweather}{1}, from
-\texttt{fujinet-weather}, and \rp{fnbattleship}{1}, from
-\texttt{fujinet-battleship}.
+\texttt{fujinet-weather}, \rp{fnbattleship}{1}, from
+\texttt{fujinet-battleship}, and \rp{fnholdem}{1}, from
+\texttt{fujinet-texasHoldEm}.
 
 \subsection{fujinet-lib for NitrOS-9}
 
@@ -1520,6 +1526,28 @@ lines, shades, arrows, and rings it draws with. Its title has a
 battleship of pixel art, made by \file{shipart.py} as \cmd{fnweather}'s
 icons are.
 
+\cmd{fnholdem} is the C client of \texttt{fujinet-texasHoldEm}, Texas
+Hold'em on a server that deals and knows the rules: the client polls for
+the state, a C structure as \cmd{fnbattleship}'s is (asked for
+big-endian, for the 6809), draws it, and sends back the move the player
+picks from those the server offers. Its common code is the same on every
+computer; NitrOS-9's directory, \file{os9}, draws the table for 80
+columns in xterm's 256 colors: the felt, green, blue, or red, in a
+wooden rail; a block for each of up to eight seats, its name plate gold
+while the player has the move, two cards five columns by three with
+round corners, and the chips; the bets beside the seats; and the five
+cards in the middle. Upstream draws the whole table each time the state
+comes in, as on the computers with a second screen to draw on. Here it
+is drawn into a copy of the screen, a character and two colors a cell,
+and \file{screen.c} sends only the cells that differ from what the
+terminal shows: a color only when it changes, the blank ends of rows
+erased by the terminal, and cells that are already right stepped over.
+A poll that changes nothing sends nothing, and a new hand a few hundred
+bytes, at the console's 4K a second. The title's big letters and their
+shadow, and its fanned royal flush, are cells too, made by
+\file{title.py}; the shadow goes first, which saves a color change at
+every edge of a letter, and the title comes to about 4K.
+
 \subsection{Building and testing}
 
 \type{make fujinet-lib} compiles fujinet-lib and puts it in
@@ -1565,6 +1593,9 @@ on the real server.
 TCP: it is compiled as for CMOC, with stand-ins for CMOC's \file{cmoc.h}
 and \file{coco.h} in \file{fujinet/bounce/host}, so that it takes the
 same paths as on the board, and plays against a real server.
+\type{make build/fnholdem-host} builds \cmd{fnholdem} the same way, with
+its stand-ins in \file{fujinet/holdem/host}, and plays at the real
+server's tables.
 
 % ═══════════════════════════════════════════════════════════════════
 \chapter{Reference Pages}
@@ -1592,6 +1623,7 @@ click(1) & Turn keyclicks on or off\\
 fnbattleship(1) & Fuji Battleship, through the FujiNet\\
 fnbounce(1) & Bounce World, through the FujiNet\\
 fnconfig(1) & FujiNet CONFIG: the FujiNet's status, hosts, device slots, and WiFi\\
+fnholdem(1) & Texas Hold'em, through the FujiNet\\
 fnnews(1) & The news, through the FujiNet\\
 fnstocks(1) & Stock quotes, through the FujiNet\\
 fnweather(1) & The weather, now and for the week, through the FujiNet; \textmd{fnwx}\\
@@ -1810,6 +1842,67 @@ The screen must be at least 80 columns by 24 lines. \cmd{fnconfig} was
 written for a Color Computer~3's window; on the TFR/911H it is built to
 send ANSI escape sequences instead.
 \rh{See Also} \rp{fujinet}{1}, \rp{fujinet}{4}
+\end{refpage}
+
+\refentry{fnholdem}{1}{Texas Hold'em}
+\begin{refpage}
+\rh{Name} \cmd{fnholdem} -- Texas Hold'em, through the FujiNet
+\rh{Syntax} \cmd{fnholdem}
+\rh{Description}
+The \cmd{fnholdem} command plays Texas Hold'em, the poker game, at a
+table on a server on the Internet (\texttt{th.carr-designs.com}), with up
+to eight players: people on other computers, and the server's bots. Each
+player is dealt two cards, face down; five more are dealt face up in the
+middle of the table, three (the flop), then one (the turn), then one
+(the river), with a round of betting before each and after the last. The
+best hand of five cards, of a player's two and the five in the middle,
+wins the pot. The server deals and knows the rules: it says which moves
+you may make, and \cmd{fnholdem} offers you those.
+
+\cmd{fnholdem} starts with its title, which shows its version and the day
+it was built, for three seconds or until a key. The first time, it asks
+for a name, which the FujiNet keeps for the games of its lobby. Then it
+lists the server's tables and how many sit at each: some with bots
+(\texttt{AI~ROOM~-~2~BOTS}, \texttt{4~BOTS}, \texttt{6~BOTS}), and some
+for people.
+
+At the table you sit at the bottom, and the others round the felt, each
+with a name plate, two cards, and their chips below. The plate of the
+player whose move it is turns gold, and at the showdown, the winner's.
+Each player's bet and last move are beside the seat, toward the middle,
+where the five cards lie with the round of betting over them and the pot
+under. Your moves are on the status bar, with a gold bar under the one
+chosen and the seconds left at the right; when they run out, the server
+moves for you. Calling and raising share a place on the bar, with the
+amount beside it.
+
+\begin{keys}[1.1in]
+\key{Up}, \key{Down} & In the list of tables, choose one; \key{Space} or
+\key{Enter} joins it. \key{R} lists them again, \key{H} shows how to
+play, \key{C} changes the felt's color (green, blue, red), \key{N}
+changes your name, and \key{Q} quits.\\
+\key{Left}, \key{Right} & On your move, choose fold, check or call,
+raise or bet, or all in.\\
+\key{Up}, \key{Down} & On your move, with the raise chosen, a bigger or a
+smaller raise.\\
+\key{Enter}, \key{Space} & Make the move chosen.\\
+\key{Esc} & The menu: \key{Q} leaves the table, \key{H} shows how to
+play, \key{C} changes the felt's color, and \key{Esc} goes back.\\
+\end{keys}
+\rh{Restrictions}
+NitrOS-9 waits while the FujiNet fetches each reply from the server,
+which takes a second or more. The screen must be at least 80 columns by
+24 lines, show UTF-8, and have xterm's 256 colors. The sounds are played
+on the SN76489 (\rp{sn76489}{4}).
+\rh{Files}
+\begin{keys}[1.75in]
+\file{/FujiNet/00010100.key} & On the FujiNet's SD card: your name, for
+the games of the FujiNet's lobby.\\
+\file{/FujiNet/00010108.key} & The server, and the table you are at, for
+the FujiNet's lobby; leaving the table empties it.\\
+\file{/FujiNet/bebe0100.key} & The felt's color.\\
+\end{keys}
+\rh{See Also} \rp{fnbattleship}{1}, \rp{fujinet}{4}, \rp{sn76489}{4}
 \end{refpage}
 
 \refentry{fnnews}{1}{the news}
